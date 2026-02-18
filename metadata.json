@@ -1,0 +1,8 @@
+{
+  "name": "SanSure",
+  "description": "Rural sanitation trust-rating platform using Gemini Vision & Data Intelligence.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
