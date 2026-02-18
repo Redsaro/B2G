@@ -3,12 +3,12 @@ import { SANSURE_SYSTEM_INSTRUCTION } from "../constants";
 import { Checklist, VerificationResult, CollusionResult, InvestorSignalResult, Submission } from "../types";
 
 // ═══════════════════════════════════════════════════════════════
-// HYBRID MODEL STRATEGY
-// Vision (Mode 1): gemini-2.0-flash — only model with photo analysis
-// Text  (Modes 2,3,4): gemma-3-27b-it — 30 RPM, 14.4K RPD (10x more quota)
+// UNIFIED MODEL STRATEGY
+// All Modes: gemma-3-27b-it — VLM ✓ | 30 RPM | 14.4K RPD | Free tier
+// gemini-2.5-pro avoided: only 25 RPD free tier (exhausted in minutes)
 // ═══════════════════════════════════════════════════════════════
-const VISION_MODEL = 'gemini-2.0-flash';    // 15 RPM | Unlimited TPM | 1.5K RPD | Vision ✓
-const TEXT_MODEL = 'gemma-3-27b-it';      // 30 RPM | 15K TPM | 14.4K RPD | Text only
+const VISION_MODEL = 'gemma-3-27b-it';    // 30 RPM | 14.4K RPD | VLM ✓ Vision + Text
+const TEXT_MODEL = 'gemma-3-27b-it';      // 30 RPM | 14.4K RPD | Text only
 
 let aiClient: GoogleGenAI | null = null;
 const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
@@ -30,13 +30,47 @@ export const getAIClient = (): GoogleGenAI | null => {
 // Prevents 429s by tracking request timestamps per model
 // ═══════════════════════════════════════════════════════════════
 const requestLog: Record<string, number[]> = {};
+const modelCooldownUntil: Record<string, number> = {};
 const RATE_LIMITS: Record<string, number> = {
-  [VISION_MODEL]: 14,   // Stay under 15 RPM limit
-  [TEXT_MODEL]: 28,      // Stay under 30 RPM limit
+  [VISION_MODEL]: 28,   // Stay under 30 RPM limit (gemma-3-27b-it free tier — both vision + text)
+};
+
+const getRateLimitCooldownMs = (error: any): number => {
+  const retryAfter =
+    error?.response?.headers?.['retry-after'] ||
+    error?.headers?.['retry-after'] ||
+    error?.response?.headers?.get?.('retry-after');
+
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return seconds * 1000;
+    }
+  }
+
+  return 60000; // conservative default for free-tier quota windows
+};
+
+const isRateLimitError = (error: any): boolean => {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.status === 'RESOURCE_EXHAUSTED' ||
+    error?.httpStatusCode === 429 ||
+    error?.code === 429 ||
+    message.includes('429') ||
+    message.includes('resource_exhausted') ||
+    message.includes('quota') ||
+    message.includes('rate limit')
+  );
 };
 
 const canMakeRequest = (model: string): boolean => {
   const now = Date.now();
+  const cooldownUntil = modelCooldownUntil[model] || 0;
+  if (now < cooldownUntil) {
+    return false;
+  }
+
   const limit = RATE_LIMITS[model] || 10;
   if (!requestLog[model]) requestLog[model] = [];
   // Clean old entries (older than 60s)
@@ -52,6 +86,15 @@ const logRequest = (model: string) => {
 const waitForSlot = (model: string): Promise<void> => {
   return new Promise(resolve => {
     const check = () => {
+      const now = Date.now();
+      const cooldownUntil = modelCooldownUntil[model] || 0;
+      if (now < cooldownUntil) {
+        const waitMs = Math.max(1000, cooldownUntil - now);
+        console.log(`⏳ Model cooldown active: waiting ${Math.round(waitMs / 1000)}s for ${model}`);
+        setTimeout(check, Math.min(waitMs, 5000));
+        return;
+      }
+
       if (canMakeRequest(model)) {
         resolve();
       } else {
@@ -69,24 +112,32 @@ const waitForSlot = (model: string): Promise<void> => {
 const callWithProtection = async <T>(
   model: string,
   apiCall: () => Promise<T>,
-  retries = 2
+  retries = 1  // Reduced: 429s don't resolve fast, better to fall back quickly
 ): Promise<T> => {
   await waitForSlot(model);
-  logRequest(model);
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    logRequest(model);  // Log inside loop — retries tracked correctly
     try {
       return await apiCall();
     } catch (error: any) {
-      const is429 = error?.message?.includes('429') || error?.status === 429;
-      const isLast = attempt === retries;
+      const is429 = isRateLimitError(error);
 
+      const isLast = attempt === retries;
       if (is429 && !isLast) {
-        const backoffMs = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000;
-        console.warn(`🔄 429 on ${model} — retry ${attempt + 1}/${retries} in ${Math.round(backoffMs / 1000)}s`);
-        await new Promise(r => setTimeout(r, backoffMs));
+        // Keep failed attempts counted and enforce provider cooldown to avoid request storms.
+        const cooldownMs = getRateLimitCooldownMs(error);
+        modelCooldownUntil[model] = Date.now() + cooldownMs;
+        console.warn(`🔄 QUOTA on ${model} — retry ${attempt + 1}/${retries} after ${Math.round(cooldownMs / 1000)}s`);
+        await waitForSlot(model);
         continue;
       }
+
+      if (is429) {
+        const cooldownMs = getRateLimitCooldownMs(error);
+        modelCooldownUntil[model] = Date.now() + cooldownMs;
+      }
+
       throw error;
     }
   }
@@ -312,22 +363,26 @@ Return ONLY this JSON (no markdown fences):
   const client = getAIClient();
   if (client) {
     try {
+      console.log(`📤 [Mode 1] Vision analysis → ${VISION_MODEL}`);
       const response = await callWithProtection(VISION_MODEL, () =>
         client.models.generateContent({
           model: VISION_MODEL,
-          contents: {
-            parts: [
-              { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-              { text: prompt }
-            ]
-          },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+                { text: prompt }
+              ]
+            }
+          ],
           config: {
             systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
             temperature: 0.1,
-            responseMimeType: "application/json",
           }
         })
       );
+      console.log(`✅ [Mode 1] Response received`);
 
       const parsed = safeJsonParse<VerificationResult>(response.text);
       if (parsed) return parsed;
@@ -391,17 +446,17 @@ Return ONLY this JSON (no markdown fences):
   }
 
   try {
+    console.log(`📤 [Mode 2] Collusion check → ${TEXT_MODEL}`);
     const response = await callWithProtection(TEXT_MODEL, () =>
       client.models.generateContent({
         model: TEXT_MODEL,
-        contents: prompt,
+        contents: `[SYSTEM: ${SANSURE_SYSTEM_INSTRUCTION}]\n\n${prompt}`,
         config: {
-          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
           temperature: 0.1,
-          responseMimeType: "application/json",
         }
       })
     );
+    console.log(`✅ [Mode 2] Response received`);
 
     const parsed = safeJsonParse<CollusionResult>(response.text);
     return parsed || fallbackCollusionCheck(submissions);
@@ -435,16 +490,17 @@ Focus on: protection of children, health of families, pride in community achieve
   }
 
   try {
+    console.log(`📤 [Mode 3] Health narrative → ${TEXT_MODEL}`);
     const response = await callWithProtection(TEXT_MODEL, () =>
       client.models.generateContent({
         model: TEXT_MODEL,
-        contents: prompt,
+        contents: `[SYSTEM: ${SANSURE_SYSTEM_INSTRUCTION}]\n\n${prompt}`,
         config: {
-          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
           temperature: 0.7,
         }
       })
     );
+    console.log(`✅ [Mode 3] Response received`);
 
     return response.text || fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
   } catch (error) {
@@ -495,17 +551,17 @@ Return ONLY this JSON (no markdown fences):
   }
 
   try {
+    console.log(`📤 [Mode 4] Investor signal → ${TEXT_MODEL}`);
     const response = await callWithProtection(TEXT_MODEL, () =>
       client.models.generateContent({
         model: TEXT_MODEL,
-        contents: prompt,
+        contents: `[SYSTEM: ${SANSURE_SYSTEM_INSTRUCTION}]\n\n${prompt}`,
         config: {
-          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
           temperature: 0.1,
-          responseMimeType: "application/json",
         }
       })
     );
+    console.log(`✅ [Mode 4] Response received`);
 
     const parsed = safeJsonParse<InvestorSignalResult>(response.text);
     return parsed || fallbackInvestorSignal(history, avg, stdDev);

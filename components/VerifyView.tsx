@@ -36,21 +36,25 @@ const VerifyView: React.FC = () => {
     try {
       const base64Data = image.split(',')[1];
       const data = await runVisionAnalysis(base64Data, checklist);
-
-      // Persist to Glass Vault (Mock)
-      const submission = dbService.saveSubmission(
-        "1", // Default Village ID for demo
-        "FAC_001", // Default Facility ID
-        "household", // Default Role (CHW view implies household/peer usually, defaulting to household)
-        checklist,
-        base64Data,
-        data,
-        "gemini" // Default method
-      );
-
       setResult(data);
+
+      // Persist to Glass Vault (LocalStorage) — non-critical, don't fail if storage is full
+      try {
+        dbService.saveSubmission(
+          "1", // Default Village ID for demo
+          "FAC_001", // Default Facility ID
+          "household",
+          checklist,
+          base64Data,
+          data,
+          "gemini"
+        );
+      } catch (storageErr) {
+        console.warn("⚠ Glass Vault save failed (storage full?):", storageErr);
+      }
     } catch (e) {
-      alert("Analysis failed. Please try again.");
+      console.error("Analysis error:", e);
+      alert("Scan failed. Please retry in a minute.");
     } finally {
       setLoading(false);
     }
