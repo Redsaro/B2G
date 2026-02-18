@@ -1,12 +1,42 @@
-import { GoogleGenAI, Schema } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { SANSURE_SYSTEM_INSTRUCTION } from "../constants";
 import { Checklist, VerificationResult, CollusionResult, InvestorSignalResult, Submission } from "../types";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // Plan v3.0 Requirement: Gemini 3 Pro Preview
 const MODEL_NAME = 'gemini-3-pro-preview';
+
+let aiClient: GoogleGenAI | null = null;
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+
+const getAIClient = (): GoogleGenAI | null => {
+  if (aiClient) {
+    return aiClient;
+  }
+
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    aiClient = new GoogleGenAI({ apiKey });
+    return aiClient;
+  } catch (error) {
+    console.warn("Gemini client initialization failed. Switching to fallback mode.", error);
+    return null;
+  }
+};
+
+const safeJsonParse = <T>(text?: string): T | null => {
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+};
 
 // Rule-based fallback for MVP resilience (Feature 1 requirement)
 const fallbackVisionScorer = (checklist: Checklist): VerificationResult => {
@@ -25,13 +55,118 @@ const fallbackVisionScorer = (checklist: Checklist): VerificationResult => {
       clean: checklist.clean ? 'confirmed' : 'unclear',
       pit: checklist.pit ? 'confirmed' : 'unclear'
     },
-    detected_features: ['Manual checklist verification (Network/API Fallback)'],
-    discrepancies: ['AI verification unavailable - score based on self-report only'],
+    detected_features: ['Manual checklist verification (Network/API fallback)'],
+    discrepancies: ['AI verification unavailable - score based on checklist only'],
     recommendation: 'Submit visual evidence when connectivity improves.',
     spoofing_risk: 'low',
     spoofing_reasoning: 'Fallback mode active: Image analysis skipped.'
   };
 };
+
+const fallbackCollusionCheck = (submissions: Submission[]): CollusionResult => {
+  const scores = submissions.map((s) => s.score);
+  const count = scores.length || 1;
+  const consensus = Math.round(scores.reduce((acc, score) => acc + score, 0) / count);
+  const scoreVariance = Number((scores.reduce((acc, score) => acc + Math.pow(score - consensus, 2), 0) / count).toFixed(2));
+  const scoreSpread = scores.length ? Math.max(...scores) - Math.min(...scores) : 0;
+  const identicalChecklist = submissions.every((s, idx, arr) => idx === 0 || JSON.stringify(s.checklist) === JSON.stringify(arr[0].checklist));
+
+  const indicators: string[] = [];
+  if (scoreSpread <= 2) indicators.push('Very low spread across independent submissions');
+  if (identicalChecklist) indicators.push('Checklist responses are identical across submitters');
+  if (submissions.some((s) => s.discrepancies.length > 0)) indicators.push('At least one submitter reported discrepancies');
+
+  let collusionRisk: CollusionResult['collusion_risk'] = 'low';
+  if (scoreSpread <= 2 && identicalChecklist) {
+    collusionRisk = 'high';
+  } else if (scoreSpread <= 6 || scoreVariance > 120) {
+    collusionRisk = 'medium';
+  }
+
+  const recommendation: CollusionResult['recommendation'] =
+    collusionRisk === 'high'
+      ? 'hold_pending_review'
+      : consensus >= 70
+        ? 'mint_token'
+        : 'reject_flag_escalate';
+
+  return {
+    consensus_score: consensus,
+    score_variance: scoreVariance,
+    collusion_risk: collusionRisk,
+    collusion_indicators: indicators.length > 0 ? indicators : ['No strong collusion indicators in fallback mode'],
+    independence_confirmed: collusionRisk === 'low',
+    reasoning: 'Deterministic fallback used because AI adjudication is unavailable. Result based on score spread and checklist overlap.',
+    recommendation,
+    confidence: 'low'
+  };
+};
+
+const getHistoryTrend = (history: number[]): InvestorSignalResult['trend'] => {
+  if (history.length < 10) {
+    return 'stable';
+  }
+
+  const splitIndex = Math.floor(history.length / 2);
+  const firstHalf = history.slice(0, splitIndex);
+  const secondHalf = history.slice(splitIndex);
+
+  const firstAvg = firstHalf.reduce((acc, v) => acc + v, 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((acc, v) => acc + v, 0) / secondHalf.length;
+  const delta = secondAvg - firstAvg;
+
+  if (delta >= 8) return 'strongly_improving';
+  if (delta >= 3) return 'improving';
+  if (delta <= -8) return 'strongly_declining';
+  if (delta <= -3) return 'declining';
+  return 'stable';
+};
+
+const fallbackInvestorSignal = (history: number[], avg: number, stdDev: number): InvestorSignalResult => {
+  const trend = getHistoryTrend(history);
+  const volatility = Number(stdDev.toFixed(2));
+  const basePrice = Math.round(Math.max(6, Math.min(75, (avg * 0.7) - (stdDev * 1.1))));
+
+  let riskRating: InvestorSignalResult['risk_rating'] = 'CCC';
+  if (avg >= 85 && stdDev <= 6) riskRating = 'AAA';
+  else if (avg >= 80 && stdDev <= 8) riskRating = 'AA';
+  else if (avg >= 72 && stdDev <= 10) riskRating = 'A';
+  else if (avg >= 65 && stdDev <= 12) riskRating = 'BBB';
+  else if (avg >= 58 && stdDev <= 16) riskRating = 'BB';
+  else if (avg >= 50 && stdDev <= 20) riskRating = 'B';
+  else if (avg < 35) riskRating = 'D';
+
+  const disbursementReady = ['AAA', 'AA', 'A', 'BBB'].includes(riskRating) && trend !== 'declining' && trend !== 'strongly_declining';
+
+  let forecast: InvestorSignalResult['30_day_forecast'] = 'stable';
+  if (trend === 'strongly_improving' || trend === 'improving') {
+    forecast = 'improving';
+  } else if (trend === 'strongly_declining' || riskRating === 'CCC' || riskRating === 'D') {
+    forecast = 'at_risk';
+  }
+
+  return {
+    credit_price_inr: basePrice,
+    volatility_index: volatility,
+    risk_rating: riskRating,
+    trend,
+    investment_signal: disbursementReady
+      ? 'Fallback model indicates acceptable risk for phased disbursement.'
+      : 'Fallback model suggests caution; require manual review before disbursement.',
+    disbursement_ready: disbursementReady,
+    '30_day_forecast': forecast
+  };
+};
+
+const fallbackHealthNarrative = (
+  villageName: string,
+  population: number,
+  avgScore: number,
+  casesPrevented: number
+): string =>
+  `${villageName} has maintained an average hygiene score of ${avgScore} across recent checks. ` +
+  `For a population of ${population}, this may have helped prevent around ${casesPrevented} sanitation-related illnesses. ` +
+  `Continued weekly maintenance and water availability checks are recommended.`;
 
 // Mode 1: Vision Hygiene Scorer
 export const runVisionAnalysis = async (
@@ -45,8 +180,13 @@ export const runVisionAnalysis = async (
     Perform visual verification.
   `;
 
+  const client = getAIClient();
+  if (!client) {
+    return fallbackVisionScorer(checklist);
+  }
+
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
@@ -61,8 +201,8 @@ export const runVisionAnalysis = async (
       }
     });
 
-    const text = response.text || "{}";
-    return JSON.parse(text) as VerificationResult;
+    const parsed = safeJsonParse<VerificationResult>(response.text);
+    return parsed || fallbackVisionScorer(checklist);
   } catch (error) {
     console.warn("Gemini Vision Error (switching to fallback):", error);
     return fallbackVisionScorer(checklist);
@@ -76,8 +216,13 @@ export const runCollusionCheck = async (submissions: Submission[]): Promise<Coll
     Submissions: ${JSON.stringify(submissions)}
   `;
 
+  const client = getAIClient();
+  if (!client) {
+    return fallbackCollusionCheck(submissions);
+  }
+
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
       config: {
@@ -87,10 +232,11 @@ export const runCollusionCheck = async (submissions: Submission[]): Promise<Coll
       }
     });
 
-    return JSON.parse(response.text || "{}") as CollusionResult;
+    const parsed = safeJsonParse<CollusionResult>(response.text);
+    return parsed || fallbackCollusionCheck(submissions);
   } catch (error) {
-    console.error("Collusion Check Error:", error);
-    throw error;
+    console.error("Collusion Check Error (switching to fallback):", error);
+    return fallbackCollusionCheck(submissions);
   }
 };
 
@@ -109,8 +255,13 @@ export const generateHealthNarrative = async (
     Estimated Cases Prevented: ${casesPrevented}
   `;
 
+  const client = getAIClient();
+  if (!client) {
+    return fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
+  }
+
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
       config: {
@@ -119,10 +270,10 @@ export const generateHealthNarrative = async (
       }
     });
 
-    return response.text || "Community data currently updating. Please check back.";
+    return response.text || fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
   } catch (error) {
     console.error("Health Narrative Error:", error);
-    return "Sanitation protects our community. Continued maintenance keeps our families safe.";
+    return fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
   }
 };
 
@@ -141,8 +292,13 @@ export const generateInvestorSignal = async (
     Standard Deviation: ${stdDev}
   `;
 
+  const client = getAIClient();
+  if (!client) {
+    return fallbackInvestorSignal(history, avg, stdDev);
+  }
+
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
       config: {
@@ -152,9 +308,10 @@ export const generateInvestorSignal = async (
       }
     });
 
-    return JSON.parse(response.text || "{}") as InvestorSignalResult;
+    const parsed = safeJsonParse<InvestorSignalResult>(response.text);
+    return parsed || fallbackInvestorSignal(history, avg, stdDev);
   } catch (error) {
-    console.error("Investor Signal Error:", error);
-    throw error;
+    console.error("Investor Signal Error (switching to fallback):", error);
+    return fallbackInvestorSignal(history, avg, stdDev);
   }
 };

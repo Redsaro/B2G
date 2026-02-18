@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,36 +8,54 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <style>
     :root {
       /* Palette Option 3: Forest Night + Bone + Electric Lime */
-      --ink: #1A2E1A;      /* Forest Night - Primary Dark */
-      --paper: #EEE9DF;    /* Bone - Primary Light */
-      --accent: #B8F000;   /* Electric Lime - Data/Action */
-      --khaki: #8B7355;    /* Warm Khaki - Secondary */
-      
+      --ink: #1A2E1A;
+      /* Forest Night - Primary Dark */
+      --paper: #EEE9DF;
+      /* Bone - Primary Light */
+      --accent: #B8F000;
+      /* Electric Lime - Data/Action */
+      --khaki: #8B7355;
+      /* Warm Khaki - Secondary */
+
       /* Palette Option 4 (Health Mirror): Saffron */
       --saffron: #F5A623;
-      
+
       /* Functional */
-      --sage: #3D9970;     /* Data Positive */
-      --coral: #E8603C;    /* Data Negative/Risk */
+      --sage: #3D9970;
+      /* Data Positive */
+      --coral: #E8603C;
+      /* Data Negative/Risk */
       --slate: #1e293b;
       --rule: #d1cdc3;
     }
+
     body {
       background-color: var(--paper);
       color: var(--ink);
       font-family: 'IBM Plex Mono', monospace;
     }
-    h1, h2, h3, h4, h5, h6 {
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
       font-family: 'Syne', sans-serif;
     }
+
     .font-serif {
       font-family: 'Fraunces', serif;
     }
+
     /* Leaflet customization */
     .leaflet-container {
       width: 100%;
@@ -44,34 +63,58 @@
       border-radius: 0.1rem;
       z-index: 10;
     }
-    
+
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
     }
+
     ::-webkit-scrollbar-track {
       background: var(--paper);
     }
+
     ::-webkit-scrollbar-thumb {
       background: var(--ink);
     }
-    
+
     /* Utility animation classes */
     .animate-scan {
       animation: scan 2s ease-in-out infinite;
     }
+
     @keyframes scan {
-      0%, 100% { top: 0%; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { top: 100%; opacity: 0; }
+
+      0%,
+      100% {
+        top: 0%;
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
     }
+
     @keyframes slide {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+      0% {
+        transform: translateX(100%);
+      }
+
+      100% {
+        transform: translateX(-100%);
+      }
     }
   </style>
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
@@ -87,10 +130,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
+
 <body>
   <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
