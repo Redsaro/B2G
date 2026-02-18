@@ -2,38 +2,124 @@ import { GoogleGenAI } from "@google/genai";
 import { SANSURE_SYSTEM_INSTRUCTION } from "../constants";
 import { Checklist, VerificationResult, CollusionResult, InvestorSignalResult, Submission } from "../types";
 
-// Plan v3.0 Requirement: Gemini 3 Pro Preview
-const MODEL_NAME = 'gemini-3-pro-preview';
+// ═══════════════════════════════════════════════════════════════
+// HYBRID MODEL STRATEGY
+// Vision (Mode 1): gemini-2.0-flash — only model with photo analysis
+// Text  (Modes 2,3,4): gemma-3-27b-it — 30 RPM, 14.4K RPD (10x more quota)
+// ═══════════════════════════════════════════════════════════════
+const VISION_MODEL = 'gemini-2.0-flash';    // 15 RPM | Unlimited TPM | 1.5K RPD | Vision ✓
+const TEXT_MODEL = 'gemma-3-27b-it';      // 30 RPM | 15K TPM | 14.4K RPD | Text only
 
 let aiClient: GoogleGenAI | null = null;
 const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
 
-const getAIClient = (): GoogleGenAI | null => {
-  if (aiClient) {
-    return aiClient;
-  }
-
+export const getAIClient = (): GoogleGenAI | null => {
   if (!apiKey) {
+    console.warn("⚠ API Key missing — check .env.local");
     return null;
   }
-
-  try {
+  if (!aiClient) {
+    console.log("🔌 Initializing AI Client...");
     aiClient = new GoogleGenAI({ apiKey });
-    return aiClient;
-  } catch (error) {
-    console.warn("Gemini client initialization failed. Switching to fallback mode.", error);
-    return null;
+  }
+  return aiClient;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// RATE LIMIT PROTECTION ENGINE
+// Prevents 429s by tracking request timestamps per model
+// ═══════════════════════════════════════════════════════════════
+const requestLog: Record<string, number[]> = {};
+const RATE_LIMITS: Record<string, number> = {
+  [VISION_MODEL]: 14,   // Stay under 15 RPM limit
+  [TEXT_MODEL]: 28,      // Stay under 30 RPM limit
+};
+
+const canMakeRequest = (model: string): boolean => {
+  const now = Date.now();
+  const limit = RATE_LIMITS[model] || 10;
+  if (!requestLog[model]) requestLog[model] = [];
+  // Clean old entries (older than 60s)
+  requestLog[model] = requestLog[model].filter(t => now - t < 60000);
+  return requestLog[model].length < limit;
+};
+
+const logRequest = (model: string) => {
+  if (!requestLog[model]) requestLog[model] = [];
+  requestLog[model].push(Date.now());
+};
+
+const waitForSlot = (model: string): Promise<void> => {
+  return new Promise(resolve => {
+    const check = () => {
+      if (canMakeRequest(model)) {
+        resolve();
+      } else {
+        const oldest = requestLog[model]?.[0] || Date.now();
+        const waitMs = Math.max(1000, 60000 - (Date.now() - oldest) + 500);
+        console.log(`⏳ Rate limit: waiting ${Math.round(waitMs / 1000)}s for ${model}`);
+        setTimeout(check, Math.min(waitMs, 5000));
+      }
+    };
+    check();
+  });
+};
+
+// Smart API call with retry + backoff + throttle
+const callWithProtection = async <T>(
+  model: string,
+  apiCall: () => Promise<T>,
+  retries = 2
+): Promise<T> => {
+  await waitForSlot(model);
+  logRequest(model);
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error: any) {
+      const is429 = error?.message?.includes('429') || error?.status === 429;
+      const isLast = attempt === retries;
+
+      if (is429 && !isLast) {
+        const backoffMs = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000;
+        console.warn(`🔄 429 on ${model} — retry ${attempt + 1}/${retries} in ${Math.round(backoffMs / 1000)}s`);
+        await new Promise(r => setTimeout(r, backoffMs));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('Exhausted retries');
+};
+
+// Check connection status — zero API cost (no actual calls made)
+export const checkConnectionStatus = async (): Promise<{ connected: boolean; model: string; error?: string }> => {
+  if (!apiKey) {
+    return { connected: false, model: 'None', error: 'No API Key' };
+  }
+  try {
+    const client = getAIClient();
+    if (!client) {
+      return { connected: false, model: 'None', error: 'Client init failed' };
+    }
+    return { connected: true, model: `${TEXT_MODEL} + ${VISION_MODEL}` };
+  } catch (e: any) {
+    return { connected: false, model: TEXT_MODEL, error: e.message?.slice(0, 50) || 'Init error' };
   }
 };
 
-const safeJsonParse = <T>(text?: string): T | null => {
+const safeJsonParse = <T>(text?: string | null): T | null => {
   if (!text) {
     return null;
   }
 
   try {
-    return JSON.parse(text) as T;
+    // Remove markdown code fences if present
+    const cleanedText = text.replace(/```json\n?|```/g, '').trim();
+    return JSON.parse(cleanedText) as T;
   } catch {
+    console.error("Failed to parse JSON:", text);
     return null;
   }
 };
@@ -168,52 +254,135 @@ const fallbackHealthNarrative = (
   `For a population of ${population}, this may have helped prevent around ${casesPrevented} sanitation-related illnesses. ` +
   `Continued weekly maintenance and water availability checks are recommended.`;
 
+// Fallback: Groq Llama 4 Maverick (Simulated/Stub)
+const runGroqAnalysis = async (base64Image: string, checklist: Checklist): Promise<VerificationResult | null> => {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) return null;
+
+  try {
+    console.log("Attempting Groq fallback...");
+    // Placeholder for actual Groq API call
+    // const response = await fetch('https://api.groq.com/openai/v1/chat/completions', ...);
+    throw new Error("Groq not implemented yet");
+  } catch (error) {
+    console.warn("Groq Fallback failed:", error);
+    return null;
+  }
+};
+
 // Mode 1: Vision Hygiene Scorer
 export const runVisionAnalysis = async (
   base64Image: string,
   checklist: Checklist
 ): Promise<VerificationResult> => {
   const checklistStr = JSON.stringify(checklist);
+  // Prompt Architecture Prompt 1: Vision Hygiene Scorer
   const prompt = `
-    Analyze this toilet facility image.
-    Checklist claimed by user: ${checklistStr}.
-    Perform visual verification.
+You are SanSure's hygiene scoring engine. Analyze this toilet facility photo across four dimensions:
+
+1. STRUCTURAL INTEGRITY (door present, walls intact, roof functional)
+2. WATER AVAILABILITY (water source visible, container present)
+3. CLEANLINESS (floor clean, no waste visible, no odor indicators)
+4. ACTIVE USAGE (signs of recent use, maintained appearance)
+
+User provided checklist:
+- Door present: ${checklist.door}
+- Water available: ${checklist.water}
+- Clean floor: ${checklist.clean}
+- Pit cover present: ${checklist.pit}
+
+Return ONLY this JSON (no markdown fences):
+{
+  "hygiene_score": 0-100,
+  "confidence": "high|medium|low",
+  "visual_verification": {
+    "door": "confirmed|contradicted|unclear",
+    "water": "confirmed|contradicted|unclear",
+    "clean": "confirmed|contradicted|unclear",
+    "pit": "confirmed|contradicted|unclear"
+  },
+  "detected_features": ["feature1", "feature2"],
+  "discrepancies": ["discrepancy if checklist contradicts photo"],
+  "recommendation": "brief assessment",
+  "spoofing_risk": "low|medium|high",
+  "spoofing_reasoning": "why spoofing suspected or not"
+}
   `;
 
   const client = getAIClient();
-  if (!client) {
-    return fallbackVisionScorer(checklist);
+  if (client) {
+    try {
+      const response = await callWithProtection(VISION_MODEL, () =>
+        client.models.generateContent({
+          model: VISION_MODEL,
+          contents: {
+            parts: [
+              { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+              { text: prompt }
+            ]
+          },
+          config: {
+            systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          }
+        })
+      );
+
+      const parsed = safeJsonParse<VerificationResult>(response.text);
+      if (parsed) return parsed;
+    } catch (error) {
+      console.warn("⚠ Vision Analysis failed (using fallback):", error);
+    }
   }
 
-  try {
-    const response = await client.models.generateContent({
-      model: MODEL_NAME,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: prompt }
-        ]
-      },
-      config: {
-        systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-      }
-    });
+  // Fallback 1: Groq
+  const groqResult = await runGroqAnalysis(base64Image, checklist);
+  if (groqResult) return { ...groqResult, scoring_method: 'groq' } as any; // Cast as any because VerificationResult interface might not have scoring_method yet (it's in StoredSubmission)
 
-    const parsed = safeJsonParse<VerificationResult>(response.text);
-    return parsed || fallbackVisionScorer(checklist);
-  } catch (error) {
-    console.warn("Gemini Vision Error (switching to fallback):", error);
-    return fallbackVisionScorer(checklist);
-  }
+  // Fallback 2: Rule-based
+  return fallbackVisionScorer(checklist);
 };
 
 // Mode 2: Collusion Adjudicator
 export const runCollusionCheck = async (submissions: Submission[]): Promise<CollusionResult> => {
+  const facilityId = submissions[0]?.facilityId || "UNKNOWN";
+  // Prompt Architecture Prompt 2: Collusion Adjudicator
   const prompt = `
-    Analyze these three independent submissions for the same facility to detect collusion.
-    Submissions: ${JSON.stringify(submissions)}
+You are SanSure's collusion detection engine. Three independent parties submitted assessments for facility ${facilityId}:
+
+HOUSEHOLD SUBMISSION:
+Score: ${submissions[0]?.score}
+Checklist: ${JSON.stringify(submissions[0]?.checklist)}
+Features: ${JSON.stringify(submissions[0]?.features)}
+
+PEER SUBMISSION (non-adjacent):
+Score: ${submissions[1]?.score}
+Checklist: ${JSON.stringify(submissions[1]?.checklist)}
+Features: ${JSON.stringify(submissions[1]?.features)}
+
+AUDITOR SUBMISSION (separate ward):
+Score: ${submissions[2]?.score}
+Checklist: ${JSON.stringify(submissions[2]?.checklist)}
+Features: ${JSON.stringify(submissions[2]?.features)}
+
+Analyze for:
+1. Score variance (suspicious if all identical or wildly different)
+2. Checklist consistency (suspicious if all match perfectly)
+3. Feature implausibility (fabricated details)
+4. Statistical independence (coordinated language patterns)
+
+Return ONLY this JSON (no markdown fences):
+{
+  "consensus_score": 0-100,
+  "score_variance": 0-100,
+  "collusion_risk": "low|medium|high",
+  "collusion_indicators": ["indicator1", "indicator2"],
+  "independence_confirmed": true|false,
+  "reasoning": "brief explanation",
+  "recommendation": "mint_token|hold_pending_review|reject_flag_escalate",
+  "confidence": "high|medium|low"
+}
   `;
 
   const client = getAIClient();
@@ -222,20 +391,22 @@ export const runCollusionCheck = async (submissions: Submission[]): Promise<Coll
   }
 
   try {
-    const response = await client.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-      }
-    });
+    const response = await callWithProtection(TEXT_MODEL, () =>
+      client.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        }
+      })
+    );
 
     const parsed = safeJsonParse<CollusionResult>(response.text);
     return parsed || fallbackCollusionCheck(submissions);
   } catch (error) {
-    console.error("Collusion Check Error (switching to fallback):", error);
+    console.warn("⚠ Collusion check failed (using fallback):", error);
     return fallbackCollusionCheck(submissions);
   }
 };
@@ -247,12 +418,15 @@ export const generateHealthNarrative = async (
   avgScore: number,
   casesPrevented: number
 ): Promise<string> => {
+  // Prompt Architecture Prompt 3: Health Mirror Narrator
   const prompt = `
-    Generate a Health Mirror narrative.
-    Village: ${villageName}
-    Population: ${population}
-    90-Day Avg Hygiene Score: ${avgScore}
-    Estimated Cases Prevented: ${casesPrevented}
+You are speaking to the community of ${villageName}. Population: ${population} people.
+
+Over the past 90 days, your village maintained clean toilets. The improvement prevented an estimated ${casesPrevented} cases of diarrheal illness.
+
+Write ONE warm paragraph (4-6 sentences) explaining this impact. Speak as a respected elder at a village meeting. Use plain language. Never use these words: data, score, metric, percentage, coefficient, algorithm, system.
+
+Focus on: protection of children, health of families, pride in community achievement, connection between clean toilets and healthy children.
   `;
 
   const client = getAIClient();
@@ -261,18 +435,20 @@ export const generateHealthNarrative = async (
   }
 
   try {
-    const response = await client.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
-        temperature: 0.7, // Higher temp for warmth
-      }
-    });
+    const response = await callWithProtection(TEXT_MODEL, () =>
+      client.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
+          temperature: 0.7,
+        }
+      })
+    );
 
     return response.text || fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
   } catch (error) {
-    console.error("Health Narrative Error:", error);
+    console.warn("⚠ Health narrative failed (using fallback):", error);
     return fallbackHealthNarrative(villageName, population, avgScore, casesPrevented);
   }
 };
@@ -284,12 +460,33 @@ export const generateInvestorSignal = async (
   avg: number,
   stdDev: number
 ): Promise<InvestorSignalResult> => {
+  // Prompt Architecture Prompt 4: Investor Signal Generator
   const prompt = `
-    Generate an Investor Risk Signal.
-    Village: ${villageName}
-    90-Day Score History: ${JSON.stringify(history)}
-    Average Score: ${avg}
-    Standard Deviation: ${stdDev}
+You are SanSure's investment signal generator. Analyze this 90-day hygiene score history for ${villageName}:
+
+Scores: ${JSON.stringify(history)}
+Average: ${avg}
+Standard Deviation: ${stdDev}
+
+Generate investment signals:
+1. Credit Price (INR): ₹80-500 based on score quality and stability
+2. Volatility Index: 0-100 (higher = more risk)
+3. Risk Rating: AAA to D
+4. Trend: strongly_improving|improving|stable|declining|strongly_declining
+5. Investment Signal: One sentence (≤15 words) for fund managers
+6. Disbursement Ready: true if safe to release funds
+7. 30-day Forecast: improving|stable|at_risk
+
+Return ONLY this JSON (no markdown fences):
+{
+  "credit_price_inr": 80-500,
+  "volatility_index": 0-100,
+  "risk_rating": "AAA|AA|A|BBB|BB|B|CCC|D",
+  "trend": "strongly_improving|improving|stable|declining|strongly_declining",
+  "investment_signal": "max 15 words",
+  "disbursement_ready": true|false,
+  "30_day_forecast": "improving|stable|at_risk"
+}
   `;
 
   const client = getAIClient();
@@ -298,20 +495,22 @@ export const generateInvestorSignal = async (
   }
 
   try {
-    const response = await client.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-      }
-    });
+    const response = await callWithProtection(TEXT_MODEL, () =>
+      client.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction: SANSURE_SYSTEM_INSTRUCTION,
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        }
+      })
+    );
 
     const parsed = safeJsonParse<InvestorSignalResult>(response.text);
     return parsed || fallbackInvestorSignal(history, avg, stdDev);
   } catch (error) {
-    console.error("Investor Signal Error (switching to fallback):", error);
+    console.warn("⚠ Investor signal failed (using fallback):", error);
     return fallbackInvestorSignal(history, avg, stdDev);
   }
 };

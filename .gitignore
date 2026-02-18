@@ -23,7 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 #directories
-./.agent
+.agent
+
 #additional files
 .env
 .env.local

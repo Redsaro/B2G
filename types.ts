@@ -61,6 +61,7 @@ export interface InvestorSignalResult {
 
 export interface Submission {
   id: string;
+  facilityId: string; // Added to match design
   submitterType: 'HOUSEHOLD' | 'PEER' | 'AUDITOR';
   score: number;
   checklist: Checklist;

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Check, AlertTriangle, ScanLine, X, Loader2 } from 'lucide-react';
 import { runVisionAnalysis } from '../services/geminiService';
+import { dbService } from '../services/dbService';
 import { VerificationResult, Checklist } from '../types';
 import clsx from 'clsx';
 
@@ -35,6 +36,18 @@ const VerifyView: React.FC = () => {
     try {
       const base64Data = image.split(',')[1];
       const data = await runVisionAnalysis(base64Data, checklist);
+
+      // Persist to Glass Vault (Mock)
+      const submission = dbService.saveSubmission(
+        "1", // Default Village ID for demo
+        "FAC_001", // Default Facility ID
+        "household", // Default Role (CHW view implies household/peer usually, defaulting to household)
+        checklist,
+        base64Data,
+        data,
+        "gemini" // Default method
+      );
+
       setResult(data);
     } catch (e) {
       alert("Analysis failed. Please try again.");
@@ -56,8 +69,8 @@ const VerifyView: React.FC = () => {
             <span className="bg-[#1A2E1A] text-[#B8F000] text-[10px] px-2 py-0.5 rounded-sm">STEP 1</span>
             Capture Evidence
           </h2>
-          
-          <div 
+
+          <div
             className="group relative h-72 bg-[#1A2E1A] overflow-hidden cursor-pointer flex flex-col items-center justify-center border border-[#d1cdc3]"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -66,16 +79,16 @@ const VerifyView: React.FC = () => {
             <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-[#EEE9DF]/50 group-hover:border-[#B8F000] transition-colors"></div>
             <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-[#EEE9DF]/50 group-hover:border-[#B8F000] transition-colors"></div>
             <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-[#EEE9DF]/50 group-hover:border-[#B8F000] transition-colors"></div>
-            
+
             {image ? (
               <>
                 <img src={image} alt="Toilet" className="w-full h-full object-cover opacity-80" />
                 {loading && (
-                   <div className="absolute inset-0 bg-[#1A2E1A]/60 flex flex-col items-center justify-center">
-                     <div className="w-full h-0.5 bg-[#B8F000] absolute top-0 animate-[scan_2s_ease-in-out_infinite]"></div>
-                     <Loader2 className="animate-spin text-[#B8F000] mb-2" size={48} />
-                     <div className="text-[#B8F000] font-mono text-xs uppercase tracking-widest animate-pulse">Processing Vision...</div>
-                   </div>
+                  <div className="absolute inset-0 bg-[#1A2E1A]/60 flex flex-col items-center justify-center">
+                    <div className="w-full h-0.5 bg-[#B8F000] absolute top-0 animate-[scan_2s_ease-in-out_infinite]"></div>
+                    <Loader2 className="animate-spin text-[#B8F000] mb-2" size={48} />
+                    <div className="text-[#B8F000] font-mono text-xs uppercase tracking-widest animate-pulse">Processing Vision...</div>
+                  </div>
                 )}
                 {!loading && !result && (
                   <div className="absolute bottom-6 bg-[#1A2E1A]/80 backdrop-blur px-3 py-1 rounded text-[#B8F000] text-xs font-mono border border-[#B8F000]">
@@ -89,18 +102,18 @@ const VerifyView: React.FC = () => {
                 <p className="text-xs uppercase tracking-widest text-[#8B7355] group-hover:text-[#EEE9DF] transition-colors">Tap to Activate Scanner</p>
               </>
             )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
               onChange={handleFileUpload}
             />
           </div>
         </div>
 
         <div className="bg-white p-6 border border-[#d1cdc3] shadow-sm">
-           <h2 className="font-['Syne'] font-bold text-lg mb-4 flex items-center gap-2 text-[#1A2E1A]">
+          <h2 className="font-['Syne'] font-bold text-lg mb-4 flex items-center gap-2 text-[#1A2E1A]">
             <span className="bg-[#1A2E1A] text-[#B8F000] text-[10px] px-2 py-0.5 rounded-sm">STEP 2</span>
             Submit Checklist
           </h2>
@@ -108,13 +121,13 @@ const VerifyView: React.FC = () => {
             {Object.keys(checklist).map((key) => {
               const k = key as keyof Checklist;
               return (
-                <button 
+                <button
                   key={key}
                   onClick={() => toggleCheck(k)}
                   className={clsx(
                     "w-full flex items-center justify-between p-4 border transition-all text-sm font-bold uppercase tracking-wider relative overflow-hidden",
-                    checklist[k] 
-                      ? "bg-[#1A2E1A] border-[#B8F000] text-[#B8F000]" 
+                    checklist[k]
+                      ? "bg-[#1A2E1A] border-[#B8F000] text-[#B8F000]"
                       : "bg-white border-[#d1cdc3] text-[#8B7355] hover:bg-[#EEE9DF]"
                   )}
                 >
@@ -142,21 +155,21 @@ const VerifyView: React.FC = () => {
           <div className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
             {/* Score Card */}
             <div className="bg-white p-8 border border-[#d1cdc3] relative overflow-hidden shadow-sm mb-6">
-               <div className="absolute top-0 right-0 p-4">
-                 <div className={clsx(
-                   "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm",
-                   result.confidence === 'high' ? "bg-[#B8F000]/20 text-[#1A2E1A]" : "bg-[#F5A623]/20 text-[#d97706]"
-                 )}>
-                   Confidence: {result.confidence}
-                 </div>
-               </div>
-               <div className="text-[10px] uppercase tracking-[0.25em] text-[#8B7355] mb-2">Hygiene Score</div>
-               <div className="text-6xl font-['Syne'] font-extrabold text-[#1A2E1A] mb-4">
-                 {result.hygiene_score}<span className="text-2xl text-[#d1cdc3] font-light">/100</span>
-               </div>
-               <p className="text-xs text-[#8B7355] leading-relaxed border-t border-[#d1cdc3] pt-4 font-medium">
-                 {result.recommendation}
-               </p>
+              <div className="absolute top-0 right-0 p-4">
+                <div className={clsx(
+                  "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm",
+                  result.confidence === 'high' ? "bg-[#B8F000]/20 text-[#1A2E1A]" : "bg-[#F5A623]/20 text-[#d97706]"
+                )}>
+                  Confidence: {result.confidence}
+                </div>
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-[#8B7355] mb-2">Hygiene Score</div>
+              <div className="text-6xl font-['Syne'] font-extrabold text-[#1A2E1A] mb-4">
+                {result.hygiene_score}<span className="text-2xl text-[#d1cdc3] font-light">/100</span>
+              </div>
+              <p className="text-xs text-[#8B7355] leading-relaxed border-t border-[#d1cdc3] pt-4 font-medium">
+                {result.recommendation}
+              </p>
             </div>
 
             {/* Verification Details */}
@@ -186,18 +199,18 @@ const VerifyView: React.FC = () => {
                   <AlertTriangle size={16} /> Risk Analysis
                 </div>
                 {result.spoofing_risk !== 'low' && (
-                   <div className="mb-3 text-xs bg-white/50 p-2 rounded">
-                     <span className="font-bold text-[#E8603C]">SPOOFING RISK: {result.spoofing_risk.toUpperCase()}</span>
-                     <p className="mt-1 opacity-80 text-[#1A2E1A]">{result.spoofing_reasoning}</p>
-                   </div>
+                  <div className="mb-3 text-xs bg-white/50 p-2 rounded">
+                    <span className="font-bold text-[#E8603C]">SPOOFING RISK: {result.spoofing_risk.toUpperCase()}</span>
+                    <p className="mt-1 opacity-80 text-[#1A2E1A]">{result.spoofing_reasoning}</p>
+                  </div>
                 )}
                 {result.discrepancies.length > 0 && (
-                   <div className="text-xs">
-                     <span className="font-bold text-[#1A2E1A]">Detected Discrepancies:</span>
-                     <ul className="list-disc pl-4 mt-1 opacity-80 text-[#1A2E1A]">
-                       {result.discrepancies.map((d, i) => <li key={i}>{d}</li>)}
-                     </ul>
-                   </div>
+                  <div className="text-xs">
+                    <span className="font-bold text-[#1A2E1A]">Detected Discrepancies:</span>
+                    <ul className="list-disc pl-4 mt-1 opacity-80 text-[#1A2E1A]">
+                      {result.discrepancies.map((d, i) => <li key={i}>{d}</li>)}
+                    </ul>
+                  </div>
                 )}
               </div>
             )}

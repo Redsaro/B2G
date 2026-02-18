@@ -51,16 +51,16 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
           isCommunity ? "bg-[#F5A623] text-[#1A2E1A]" : "bg-[#1A2E1A] text-[#EEE9DF]"
         )}>
           <div className="flex items-center gap-4">
-             <button onClick={onBack} className="hover:bg-white/10 p-2 rounded-full transition-colors group" aria-label="Go Back">
-               <ArrowLeft size={20} className={clsx(
-                 "group-hover:-translate-x-1 transition-transform",
-                 isCommunity ? "text-[#1A2E1A]" : "text-[#B8F000]"
-               )} />
-             </button>
-             <div>
-               <h1 className="text-xl font-bold tracking-tight font-['Syne']">San<span className={isCommunity ? "text-white" : "text-[#B8F000]"}>Sure</span></h1>
-               <div className="text-[10px] uppercase tracking-widest opacity-60">{role} VIEW</div>
-             </div>
+            <button onClick={onBack} className="hover:bg-white/10 p-2 rounded-full transition-colors group" aria-label="Go Back">
+              <ArrowLeft size={20} className={clsx(
+                "group-hover:-translate-x-1 transition-transform",
+                isCommunity ? "text-[#1A2E1A]" : "text-[#B8F000]"
+              )} />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight font-['Syne']">San<span className={isCommunity ? "text-white" : "text-[#B8F000]"}>Sure</span></h1>
+              <div className="text-[10px] uppercase tracking-widest opacity-60">{role} VIEW</div>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className={clsx(
@@ -69,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
             )}>
               Gemini 3 Pro
             </div>
-            <button 
+            <button
               onClick={() => setShowHelp(true)}
               className="hover:bg-white/10 p-2 rounded-full transition-colors opacity-70 hover:opacity-100"
             >
@@ -83,7 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
       <main className={`flex-1 ${isLanding ? 'p-0' : 'p-6 max-w-6xl mx-auto w-full'}`}>
         {children}
       </main>
-      
+
       {/* Footer */}
       {!isLanding && (
         <footer className="py-8 text-center text-[10px] uppercase tracking-widest text-[#8B7355] border-t border-[#d1cdc3] mt-12 bg-[#EEE9DF]">
@@ -95,7 +95,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
       {showHelp && helpContent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E1A]/80 backdrop-blur-sm p-4">
           <div className="bg-[#EEE9DF] max-w-md w-full border-t-4 border-[#B8F000] shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
-            <button 
+            <button
               onClick={() => setShowHelp(false)}
               className="absolute top-4 right-4 text-[#8B7355] hover:text-[#1A2E1A]"
             >
@@ -108,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
             <p className="text-sm text-[#8B7355] leading-relaxed mb-6 font-sans">
               {helpContent.description}
             </p>
-            
+
             <div className="bg-white p-4 rounded-sm border border-[#d1cdc3]">
               <div className="text-[10px] uppercase tracking-widest text-[#1A2E1A] font-bold mb-2">Key Metrics</div>
               <ul className="space-y-2">
