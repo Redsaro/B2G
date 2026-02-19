@@ -4,7 +4,7 @@ export interface Checklist {
   door: boolean;
   water: boolean;
   clean: boolean;
-  pit: boolean;
+  toilet: boolean;
 }
 
 export interface Village {
@@ -29,7 +29,7 @@ export interface VerificationResult {
     door: 'confirmed' | 'contradicted' | 'unclear';
     water: 'confirmed' | 'contradicted' | 'unclear';
     clean: 'confirmed' | 'contradicted' | 'unclear';
-    pit: 'confirmed' | 'contradicted' | 'unclear';
+    toilet: 'confirmed' | 'contradicted' | 'unclear';
   };
   detected_features: string[];
   discrepancies: string[];

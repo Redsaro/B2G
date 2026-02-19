@@ -72,31 +72,34 @@ export const MOCK_VILLAGES: Village[] = [
 // Initialize calculated fields
 MOCK_VILLAGES.forEach(v => {
   v.volatilityIndex = parseFloat(calculateStandardDeviation(v.hygieneScoreHistory).toFixed(2));
-  v.casesPrevented = calculateCasesPrevented(v.population, v.hygieneScoreHistory.reduce((a,b)=>a+b,0)/90);
+  v.casesPrevented = calculateCasesPrevented(v.population, v.hygieneScoreHistory.reduce((a, b) => a + b, 0) / 90);
 });
 
 export const MOCK_SUBMISSIONS: Submission[] = [
   {
     id: 's1',
+    facilityId: 'f1',
     submitterType: 'HOUSEHOLD',
     score: 95,
-    checklist: { door: true, water: true, clean: true, pit: true },
+    checklist: { door: true, water: true, clean: true, toilet: true },
     features: ['secure door', 'water bucket present', 'clean floor'],
     discrepancies: []
   },
   {
     id: 's2',
+    facilityId: 'f1',
     submitterType: 'PEER',
     score: 92,
-    checklist: { door: true, water: true, clean: true, pit: true },
+    checklist: { door: true, water: true, clean: true, toilet: true },
     features: ['door locked', 'water available'],
     discrepancies: []
   },
   {
     id: 's3',
+    facilityId: 'f1',
     submitterType: 'AUDITOR',
     score: 88,
-    checklist: { door: true, water: false, clean: true, pit: true },
+    checklist: { door: true, water: false, clean: true, toilet: true },
     features: ['door good', 'no water stored', 'clean'],
     discrepancies: ['water availability unclear']
   }

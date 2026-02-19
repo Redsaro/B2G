@@ -13,7 +13,7 @@ const VerifyView: React.FC = () => {
     door: false,
     water: false,
     clean: false,
-    pit: false,
+    toilet: false,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,7 +135,7 @@ const VerifyView: React.FC = () => {
                       : "bg-white border-[#d1cdc3] text-[#8B7355] hover:bg-[#EEE9DF]"
                   )}
                 >
-                  <span className="z-10 relative">{key === 'clean' ? 'Floor Clean' : key === 'pit' ? 'Pit Covered' : key}</span>
+                  <span className="z-10 relative">{key === 'clean' ? 'Toilet Clean' : key === 'toilet' ? 'Toilet Visible' : key}</span>
                   {checklist[k] && <Check size={16} className="z-10 relative" />}
                   {checklist[k] && <div className="absolute left-0 top-0 h-full w-1 bg-[#1A2E1A]"></div>}
                 </button>
