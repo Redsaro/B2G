@@ -29,14 +29,14 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 #### Acceptance Criteria
 
-1. WHEN a verification participant uploads a toilet photo, THE System SHALL analyze it using Gemini 3 Pro Preview across four dimensions: structural integrity, water availability, cleanliness, and active usage indicators
-2. WHEN the AI analysis completes, THE System SHALL return a Hygiene_Score between 0 and 100 with a confidence level percentage
+1. WHEN a verification participant uploads a toilet photo, THE System SHALL analyze it using Groq Llama 4 Scout (Multimodal) across four dimensions: structural integrity, water availability, cleanliness (toilet-focused), and toilet visibility
+2. WHEN the AI analysis completes, THE System SHALL return a Hygiene_Score between 0 and 100 with a confidence level assessment
 3. WHEN the AI analysis completes, THE System SHALL provide per-dimension visual verification results for each of the four assessment dimensions
-4. IF Gemini API quota is exhausted, THEN THE System SHALL fall back to Groq Llama 4 Maverick for scoring
+4. IF the primary Groq model fails, THEN THE System SHALL fall back to a secondary Groq model or rule-based scoring
 5. IF both AI services are unavailable, THEN THE System SHALL fall back to rule-based browser scoring using scorer.js
 6. WHEN analyzing a photo, THE System SHALL detect spoofing risk by identifying recycled or staged images
 7. WHEN spoofing risk is detected, THE System SHALL flag the submission with a spoofing risk assessment level
-8. WHEN the verification participant submits a 4-item binary checklist (door, water, clean floor, pit cover), THE System SHALL incorporate checklist data into the final Hygiene_Score calculation
+8. WHEN the verification participant submits a 4-item binary checklist (door, water, toilet clean, toilet visible), THE System SHALL incorporate checklist data into the final Hygiene_Score calculation
 9. WHEN AI scoring returns discrepancies between photo analysis and checklist responses, THE System SHALL flag the discrepancy for review
 
 ### Requirement 2: Bayesian Collusion Detection
@@ -46,11 +46,11 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 #### Acceptance Criteria
 
 1. WHEN three verification participants (household, non-adjacent peer, separate-ward auditor) submit reports for the same facility, THE System SHALL ensure mathematical independence by validating geographic and organizational separation
-2. WHEN all three reports are received, THE System SHALL send them to Gemini for adjudication analysis
-3. WHEN Gemini performs adjudication, THE System SHALL analyze score variance across the three submissions
-4. WHEN Gemini performs adjudication, THE System SHALL analyze checklist consistency across the three submissions
-5. WHEN Gemini performs adjudication, THE System SHALL detect feature implausibility in submitted data
-6. WHEN Gemini performs adjudication, THE System SHALL assess statistical independence between submissions
+2. WHEN all three reports are received, THE System SHALL send them to Groq for adjudication analysis
+3. WHEN Groq performs adjudication, THE System SHALL analyze score variance across the three submissions
+4. WHEN Groq performs adjudication, THE System SHALL analyze checklist consistency across the three submissions
+5. WHEN Groq performs adjudication, THE System SHALL detect feature implausibility in submitted data
+6. WHEN Groq performs adjudication, THE System SHALL assess statistical independence between submissions
 7. WHEN adjudication completes, THE System SHALL output a collusion risk level (low, medium, or high)
 8. WHEN adjudication completes, THE System SHALL provide a minting recommendation (approve, reject, or manual review)
 9. WHEN collusion risk is high, THE System SHALL prevent Impact_Credit minting until manual review
@@ -97,8 +97,8 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 1. WHEN a village has 90 days of hygiene score history, THE System SHALL correlate the timeline with anonymized health event data
 2. WHEN calculating health impact, THE System SHALL apply the WHO diarrheal disease reduction coefficient (23% reduction per 10-point Hygiene_Score improvement)
-3. WHEN health correlation is calculated, THE System SHALL send the data to Gemini for narrative generation
-4. WHEN Gemini generates the narrative, THE System SHALL ensure it uses warm, plain-language suitable for rural audiences
+3. WHEN health correlation is calculated, THE System SHALL send the data to Groq for narrative generation
+4. WHEN Groq generates the narrative, THE System SHALL ensure it uses warm, plain-language suitable for rural audiences
 5. WHEN the narrative is generated, THE System SHALL include estimated cases prevented based on score improvements
 6. WHEN the narrative is generated, THE System SHALL include year-on-year health outcome comparisons
 7. WHEN the narrative is generated, THE System SHALL include girls' school attendance correlation data where available
@@ -113,7 +113,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 #### Acceptance Criteria
 
 1. WHEN a verification participant opens the submission interface, THE System SHALL display a photo upload control prominently at the top of the screen
-2. WHEN a verification participant opens the submission interface, THE System SHALL display a 4-item binary checklist (door, water, clean floor, pit cover) below the photo upload area
+2. WHEN a verification participant opens the submission interface, THE System SHALL display a 4-item binary checklist (door, water, toilet clean, toilet visible) below the photo upload area
 3. THE System SHALL render each checklist item as a toggle or checkbox with clear labels and icons
 4. WHEN a photo is uploaded, THE System SHALL display real-time processing status with a progress indicator
 5. WHEN AI scoring completes, THE System SHALL display the Hygiene_Score as a large numerical value (0-100) with confidence level percentage
@@ -153,7 +153,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 1. WHEN the Health Mirror display is opened, THE System SHALL render a full-screen interface optimized for shared viewing with no navigation chrome or headers
 2. WHEN rendering the display, THE System SHALL use large typography with minimum 24pt font size for body text and 48pt for headings
 3. THE System SHALL organize the display with: village name header at top, main narrative in center, key metrics in large cards at bottom
-4. WHEN the display loads, THE System SHALL fetch the Gemini-generated health impact narrative for the village
+4. WHEN the display loads, THE System SHALL fetch the Groq-generated health impact narrative for the village
 5. WHEN displaying the narrative, THE System SHALL show estimated diarrheal disease cases prevented as a large highlighted number with descriptive text
 6. WHEN displaying the narrative, THE System SHALL show year-on-year health outcome comparisons as a simple before/after visual comparison
 7. WHEN displaying the narrative, THE System SHALL show girls' school attendance correlation where available as a percentage improvement metric
@@ -170,14 +170,14 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 #### Acceptance Criteria
 
-1. WHEN a capital consumer opens the Investor Signal Panel, THE System SHALL send 90-day hygiene score history to Gemini for analysis
-2. WHEN Gemini analysis completes, THE System SHALL display the current Credit Price in INR
-3. WHEN Gemini analysis completes, THE System SHALL display the Volatility_Index for the investment region
-4. WHEN Gemini analysis completes, THE System SHALL display a Risk_Rating on a scale from AAA to D
-5. WHEN Gemini analysis completes, THE System SHALL display trend direction (improving, stable, or declining)
-6. WHEN Gemini analysis completes, THE System SHALL display a disbursement readiness flag
-7. WHEN Gemini analysis completes, THE System SHALL display a 30-day forecast for hygiene score trends
-8. WHEN Gemini analysis completes, THE System SHALL display a one-sentence investment signal summary
+1. WHEN a capital consumer opens the Investor Signal Panel, THE System SHALL send 90-day hygiene score history to Groq for analysis
+2. WHEN Groq analysis completes, THE System SHALL display the current Credit Price in INR
+3. WHEN Groq analysis completes, THE System SHALL display the Volatility_Index for the investment region
+4. WHEN Groq analysis completes, THE System SHALL display a Risk_Rating on a scale from AAA to D
+5. WHEN Groq analysis completes, THE System SHALL display trend direction (improving, stable, or declining)
+6. WHEN Groq analysis completes, THE System SHALL display a disbursement readiness flag
+7. WHEN Groq analysis completes, THE System SHALL display a 30-day forecast for hygiene score trends
+8. WHEN Groq analysis completes, THE System SHALL display a one-sentence investment signal summary
 9. THE System SHALL provide the Investor Signal Panel via REST API for programmatic access
 10. THE System SHALL provide the Investor Signal Panel as a web dashboard for manual review
 
@@ -222,11 +222,11 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 #### Acceptance Criteria
 
-1. WHEN Gemini API quota is exhausted, THE System SHALL automatically switch to Groq Llama 4 Maverick
-2. WHEN both Gemini and Groq are unavailable, THE System SHALL automatically switch to rule-based scorer.js
-3. WHEN using fallback scoring, THE System SHALL record the scoring method used in the Glass_Vault
+1. WHEN the primary Groq model fails, THE System SHALL automatically switch to a fallback model or rule-based scoring
+2. WHEN both primary and secondary models are unavailable, THE System SHALL automatically switch to rule-based scoring in the frontend
+3. WHEN using fallback scoring, THE System SHALL record the scoring method used
 4. WHEN using fallback scoring, THE System SHALL flag the reduced confidence level in the Hygiene_Score
-5. WHEN AI services become available again, THE System SHALL automatically resume using the primary AI service
+5. WHEN the primary AI service becomes available again, THE System SHALL automatically resume using it
 6. THE System SHALL monitor API quota usage and predict exhaustion 24 hours in advance
 7. WHEN API quota exhaustion is predicted, THE System SHALL send alerts to system administrators
 8. THE System SHALL maintain scoring consistency across all three methods within ±10 points for equivalent inputs

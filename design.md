@@ -6,7 +6,7 @@ SanSure is a continuous rural sanitation intelligence platform built on a dual-s
 
 ### Core Architecture Principles
 
-1. **Edge-First AI Processing**: AI scoring happens at submission time using Gemini 3 Pro Preview with automatic fallback to Groq and rule-based scoring
+1. **Edge-First AI Processing**: AI scoring happens at submission time using Groq Llama 4 Scout (multimodal) with automatic fallback to rule-based scoring.
 2. **Append-Only Audit Trail**: All verification events are immutably recorded in the Glass Vault SQLite database
 3. **Three-Party Verification Mesh**: Mathematical independence enforced through geographic and organizational separation
 4. **Dual-Signal Flow**: Financial signals flow upstream to capital providers; health impact signals flow downstream to households
@@ -14,74 +14,74 @@ SanSure is a continuous rural sanitation intelligence platform built on a dual-s
 
 ### Technology Stack
 
-- **Frontend**: Next.js 14 with React, Tailwind CSS, shadcn/ui components
-- **Backend**: Express.js REST API
-- **Database**: SQLite with append-only constraints for Glass Vault
-- **AI Services**: Gemini 3 Pro Preview (primary), Groq Llama 4 Maverick (fallback), scorer.js (rule-based fallback)
-- **Visualization**: Recharts for charts, Leaflet.js for maps
-- **Deployment**: Local localhost for MVP demo
+- **Frontend**: Vite with React, TypeScript, Vanilla CSS
+- **Backend**: FastAPI (Python 3.11)
+- **AI Services**: Groq Cloud (`meta-llama/llama-4-scout-17b-16e-instruct` — Multimodal Scouting Model)
+- **Logic Fallback**: Rule-based scoring in `geminiService.ts`
+- **Visualization**: Lucide Icons, Custom CSS-based dashboard
+- **Deployment**: Local dev (Vite port 3000, FastAPI port 8000)
 
 ## Architecture
 
-
 ### System Components
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend Layer                           │
-│  Next.js 14 App Router · Tailwind CSS · shadcn/ui · Zustand    │
-├─────────────────────────────────────────────────────────────────┤
-│  /verify     │  /dashboard  │  /mirror     │  /investor        │
-│  CHW Submit  │  NGO Map     │  Health      │  Capital Signal   │
-└──────┬───────┴──────┬───────┴──────┬───────┴──────┬────────────┘
-       │              │              │              │
-       └──────────────┴──────────────┴──────────────┘
-                      │ HTTP/REST
-       ┌──────────────┴──────────────────────────────────────────┐
-       │                  Express.js Backend                      │
-       │  /api/verify  │  /api/dashboard  │  /api/mirror  │  /api/investor │
-       └──────┬────────┴──────┬───────────┴──────┬────────┴──────┬─────────┘
-              │               │                  │               │
-       ┌──────┴───────┐  ┌───┴────┐  ┌──────────┴──────┐  ┌────┴─────┐
-       │ Gemini       │  │ Groq   │  │ scorer.js       │  │ SQLite   │
-       │ Vision API   │  │ Fallback│  │ Rule-based     │  │ Glass    │
-       │ (Primary)    │  │        │  │ (Final Fallback)│  │ Vault    │
-       └──────────────┘  └────────┘  └─────────────────┘  └──────────┘
+```mermaid
+graph TD
+    subgraph "Frontend Layer (React + Vite)"
+        UI["App.tsx / Views"]
+        GS["geminiService.ts (Logic)"]
+        AS["apiService.ts (HTTP)"]
+    end
+
+    subgraph "Backend Layer (FastAPI)"
+        MAIN["main.py (Endpoints / CORS)"]
+        GRQ["groq_service.py (Prompt Engineering)"]
+        MODL["models.py (Data Validation)"]
+    end
+
+    subgraph "AI Infrastructure"
+        GROQ_API["Groq Cloud API"]
+        L4["Llama 4 Scout (Multimodal)"]
+    end
+
+    UI --> GS
+    GS --> AS
+    AS -- "POST /api/*" --> MAIN
+    MAIN --> GRQ
+    GRQ --> GROQ_API
+    GROQ_API --> L4
+    
+    GS -- "Fallback (if Backend ❌)" --> RB["Rule-Based Scorer"]
 ```
 
 ### Data Flow
 
 1. **Verification Submission Flow**:
-   - CHW uploads photo + checklist → Frontend `/verify`
-   - Frontend sends multipart form → Backend `/api/verify/submit`
-   - Backend calls Gemini Vision API with base64 image
-   - Gemini returns hygiene score + per-dimension analysis
-   - Backend stores submission in Glass Vault (append-only)
-   - Frontend displays results with confidence level
+   - CHW uploads photo + checklist → `VerifyView.tsx`
+   - `apiService.ts` sends JSON payload → FastAPI `/api/vision`
+   - `groq_service.py` constructs prompt with Base64 image
+   - Groq API returns hygiene analysis via Llama 4 Scout
+   - Result returned to UI; fallback to rule-based scoring if API fails
 
 2. **Collusion Adjudication Flow**:
-   - Three independent submissions stored in Glass Vault
-   - Backend creates verification_cycle record linking submissions
-   - Backend sends all three to Gemini Collusion Adjudicator
-   - Gemini analyzes variance, consistency, independence
-   - Backend stores adjudication result + minting decision
-   - Dashboard displays collusion risk assessment
+   - Three independent submissions analyzed by `groq_service.py`
+   - Backend calls Groq Collusion Adjudicator via FastAPI endpoint
+   - Groq analyzes variance, consistency, and independence
+   - Dashboard displays collusion risk assessment and minting decision
 
 3. **Health Mirror Flow**:
-   - Frontend requests `/api/mirror/:villageId`
-   - Backend queries 90-day score history from Glass Vault
-   - Backend calculates WHO coefficient (23% per 10 points)
-   - Backend sends data to Gemini Health Narrator
-   - Gemini generates plain-language narrative
-   - Backend caches narrative in health_mirror_logs
-   - Frontend displays full-screen with large typography
+   - Frontend requests `/api/health-narrative` from FastAPI
+   - Backend processes 90-day score history and village stats
+   - Backend calls Groq Health Narrator (respected elder persona)
+   - Groq generates plain-language, metric-free narrative
+   - Frontend displays full-screen with high-impact typography
 
 4. **Investor Signal Flow**:
-   - Frontend requests `/api/investor/:villageId/signal`
-   - Backend queries 90-day scores + calculates volatility
-   - Backend sends to Gemini Investor Signal Generator
-   - Gemini returns credit price, risk rating, forecast
-   - Frontend displays signals + REST API exposes for integration
+   - Frontend requests `/api/investor-signal` from FastAPI
+   - Backend computes volatility and credit pricing
+   - Backend calls Groq Investor Signal Generator
+   - Groq returns risk rating, credit price, and investment outlook
+   - Frontend renders signals for capital consumers
 
 ## Data Models
 
@@ -117,7 +117,7 @@ CREATE TABLE submissions (
   checklist_door BOOLEAN NOT NULL,
   checklist_water BOOLEAN NOT NULL,
   checklist_clean BOOLEAN NOT NULL,
-  checklist_pit BOOLEAN NOT NULL,
+  checklist_toilet BOOLEAN NOT NULL,
   ai_hygiene_score INTEGER NOT NULL CHECK(ai_hygiene_score BETWEEN 0 AND 100),
   ai_confidence TEXT NOT NULL CHECK(ai_confidence IN ('high', 'medium', 'low')),
   ai_features TEXT,
@@ -237,7 +237,7 @@ function calculateCasesPrevented(villageId, currentPeriod, previousPeriod) {
 
 ### Prompt 1: Vision Hygiene Scorer
 
-**Service**: `backend/services/gemini.js` → `scoreToiletPhoto()`
+**Service**: `backend/groq_service.py` → `run_vision_analysis()`
 
 **Input**:
 ```javascript
@@ -247,7 +247,7 @@ function calculateCasesPrevented(villageId, currentPeriod, previousPeriod) {
     door: true,
     water: true,
     clean: false,
-    pit: true
+    toilet: true
   },
   rubric: "Assess structural integrity, water availability, cleanliness, active usage"
 }
@@ -266,7 +266,7 @@ User provided checklist:
 - Door present: {checklist.door}
 - Water available: {checklist.water}
 - Clean floor: {checklist.clean}
-- Pit cover present: {checklist.pit}
+- Pit cover present: {checklist.toilet}
 
 Return ONLY this JSON (no markdown fences):
 {
@@ -276,7 +276,7 @@ Return ONLY this JSON (no markdown fences):
     "door": "confirmed|contradicted|unclear",
     "water": "confirmed|contradicted|unclear",
     "clean": "confirmed|contradicted|unclear",
-    "pit": "confirmed|contradicted|unclear"
+    "toilet": "confirmed|contradicted|unclear"
   },
   "detected_features": ["feature1", "feature2"],
   "discrepancies": ["discrepancy if checklist contradicts photo"],
@@ -297,7 +297,7 @@ interface HygieneScoreResult {
     door: 'confirmed' | 'contradicted' | 'unclear';
     water: 'confirmed' | 'contradicted' | 'unclear';
     clean: 'confirmed' | 'contradicted' | 'unclear';
-    pit: 'confirmed' | 'contradicted' | 'unclear';
+    toilet: 'confirmed' | 'contradicted' | 'unclear';
   };
   detected_features: string[];
   discrepancies: string[];
@@ -310,7 +310,7 @@ interface HygieneScoreResult {
 
 ### Prompt 2: Collusion Adjudicator
 
-**Service**: `backend/services/gemini.js` → `adjudicateCollusion()`
+**Service**: `backend/groq_service.py` → `run_collusion_check()`
 
 **Input**:
 ```javascript
@@ -320,21 +320,21 @@ interface HygieneScoreResult {
     {
       role: "household",
       score: 85,
-      checklist: { door: true, water: true, clean: true, pit: true },
+      checklist: { door: true, water: true, clean: true, toilet: true },
       features: ["door present", "water container"],
       discrepancies: []
     },
     {
       role: "peer",
       score: 82,
-      checklist: { door: true, water: true, clean: true, pit: false },
+      checklist: { door: true, water: true, clean: true, toilet: false },
       features: ["door present", "water visible"],
-      discrepancies: ["pit cover unclear"]
+      discrepancies: ["toilet cover unclear"]
     },
     {
       role: "auditor",
       score: 88,
-      checklist: { door: true, water: true, clean: true, pit: true },
+      checklist: { door: true, water: true, clean: true, toilet: true },
       features: ["well-maintained", "water source"],
       discrepancies: []
     }
@@ -399,7 +399,7 @@ interface CollusionAdjudication {
 
 ### Prompt 3: Health Mirror Narrator
 
-**Service**: `backend/services/gemini.js` → `generateHealthNarrative()`
+**Service**: `backend/groq_service.py` → `generate_health_narrative()`
 
 **Input**:
 ```javascript
@@ -437,7 +437,7 @@ Your village kept toilets clean for 90 days. Illness cases this quarter: 12. Sam
 
 ### Prompt 4: Investor Signal Generator
 
-**Service**: `backend/services/gemini.js` → `generateInvestorSignal()`
+**Service**: `backend/groq_service.py` → `generate_investor_signal()`
 
 **Input**:
 ```javascript
@@ -500,22 +500,20 @@ interface InvestorSignal {
 
 ### Backend REST API Endpoints
 
-#### POST /api/verify/submit
-Submit toilet verification with photo and checklist.
+#### POST /api/vision
+Submit toilet verification via JSON with Base64 image and checklist.
 
 **Request**:
-```
-Content-Type: multipart/form-data
-
-village_id: 1
-household_id: HH_001
-facility_id: FAC_001
-submitter_role: household
-photo: [file]
-checklist_door: true
-checklist_water: true
-checklist_clean: false
-checklist_pit: true
+```json
+{
+  "base64_image": "...",
+  "checklist": {
+    "door": true,
+    "water": true,
+    "clean": true,
+    "toilet": true
+  }
+}
 ```
 
 **Response**:
@@ -528,11 +526,11 @@ checklist_pit: true
     "door": "confirmed",
     "water": "confirmed",
     "clean": "contradicted",
-    "pit": "confirmed"
+    "toilet": "confirmed"
   },
   "discrepancies": ["Checklist marked clean=false, photo shows clean floor"],
   "spoofing_risk": "low",
-  "scoring_method": "gemini"
+  "scoring_method": "groq"
 }
 ```
 
@@ -663,7 +661,7 @@ interface HygieneScoreCardProps {
     door: 'confirmed' | 'contradicted' | 'unclear';
     water: 'confirmed' | 'contradicted' | 'unclear';
     clean: 'confirmed' | 'contradicted' | 'unclear';
-    pit: 'confirmed' | 'contradicted' | 'unclear';
+    toilet: 'confirmed' | 'contradicted' | 'unclear';
   };
 }
 ```
@@ -826,7 +824,7 @@ function ruleBasedScore(checklist) {
   if (checklist.door) score += 12.5;
   if (checklist.water) score += 12.5;
   if (checklist.clean) score += 12.5;
-  if (checklist.pit) score += 12.5;
+  if (checklist.toilet) score += 12.5;
   
   return {
     hygiene_score: Math.round(score),
@@ -835,7 +833,7 @@ function ruleBasedScore(checklist) {
       door: checklist.door ? 'confirmed' : 'contradicted',
       water: checklist.water ? 'confirmed' : 'contradicted',
       clean: checklist.clean ? 'confirmed' : 'contradicted',
-      pit: checklist.pit ? 'confirmed' : 'contradicted'
+      toilet: checklist.toilet ? 'confirmed' : 'contradicted'
     },
     detected_features: [],
     discrepancies: [],
@@ -1064,7 +1062,7 @@ app.use('/api/investor', authenticateAPIKey);
 ### Database Security
 
 1. **Prepared Statements**: Use parameterized queries to prevent SQL injection
-2. **Read-Only Access**: Capital consumers get read-only database views
+2. **Read-Only Access**: Catoiletal consumers get read-only database views
 3. **Backup Strategy**: Daily SQLite backups (deferred to production)
 4. **Encryption at Rest**: Deferred to production
 
@@ -1175,7 +1173,7 @@ describe('Rule-based Scorer', () => {
       door: true,
       water: true,
       clean: true,
-      pit: true
+      toilet: true
     });
     expect(result.hygiene_score).toBe(100);
   });
@@ -1185,7 +1183,7 @@ describe('Rule-based Scorer', () => {
       door: false,
       water: false,
       clean: false,
-      pit: false
+      toilet: false
     });
     expect(result.hygiene_score).toBe(50);
   });
@@ -1218,7 +1216,7 @@ describe('Property-Based Tests', () => {
           door: fc.boolean(),
           water: fc.boolean(),
           clean: fc.boolean(),
-          pit: fc.boolean()
+          toilet: fc.boolean()
         }),
         (checklist) => {
           const result = ruleBasedScore(checklist);
@@ -1327,7 +1325,7 @@ npm run dev   # Start Next.js on port 3000
 
 1. **Health Correlation Accuracy**: Predictions match epidemiological audits ≥70%
 2. **Investment Signal Predictiveness**: Credit prices predict audit outcomes ≥65%, 10+ days advance
-3. **Capital Integration**: ≥1 partner deploys funds via automated API trigger
+3. **Catoiletal Integration**: ≥1 partner deploys funds via automated API trigger
 4. **Community Engagement**: Monthly Health Mirror views per village ≥4
 
 ## Implementation Phases
@@ -1419,7 +1417,7 @@ npm run dev   # Start Next.js on port 3000
    - Mitigation: Large typography, icons, plain language
    - Training: CHW onboarding program (deferred)
 
-3. **Capital Consumer Trust**
+3. **Catoiletal Consumer Trust**
    - Mitigation: Transparent Glass Vault audit trail
    - Validation: Independent field audits to verify AI accuracy
 
