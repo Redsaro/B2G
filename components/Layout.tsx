@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Role } from '../types';
 import { ArrowLeft, Info, X } from 'lucide-react';
 import clsx from 'clsx';
@@ -58,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
               )} />
             </button>
             <div>
-              <h1 className="text-xl font-bold tracking-tight font-['Syne']">San<span className={isCommunity ? "text-white" : "text-[#B8F000]"}>Sure</span></h1>
+              <h1 className="text-xl font-bold tracking-tight font-['Syne']">San<span className={isCommunity ? "text-white" : "text-[#B8F000]"}>Map</span></h1>
               <div className="text-[10px] uppercase tracking-widest opacity-60">{role} VIEW</div>
             </div>
           </div>
@@ -67,7 +67,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
               "hidden md:block text-[10px] uppercase tracking-widest px-3 py-1 font-bold rounded-sm",
               isCommunity ? "bg-[#1A2E1A] text-[#F5A623]" : "bg-[#B8F000] text-[#1A2E1A]"
             )}>
-              Gemini 3 Pro
+              Llama 4 Scout
             </div>
             <button
               onClick={() => setShowHelp(true)}
@@ -87,7 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children, role, onBack }) => {
       {/* Footer */}
       {!isLanding && (
         <footer className="py-8 text-center text-[10px] uppercase tracking-widest text-[#8B7355] border-t border-[#d1cdc3] mt-12 bg-[#EEE9DF]">
-          SanSure MVP · SDG 6.2 · Powered by Gemini
+          SanMap MVP · SDG 6.2 · Powered by Llama 4 Scout
         </footer>
       )}
 

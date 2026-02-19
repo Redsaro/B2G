@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Check, AlertTriangle, ScanLine, X, Loader2 } from 'lucide-react';
+import { Camera, Check, AlertTriangle, ScanLine, X, Loader2, Zap } from 'lucide-react';
 import { runVisionAnalysis } from '../services/geminiService';
 import { dbService } from '../services/dbService';
 import { VerificationResult, Checklist } from '../types';
@@ -143,10 +143,17 @@ const VerifyView: React.FC = () => {
             })}
           </div>
 
+          {/* AI model label above trigger button */}
+          <div className="mt-6 flex items-center justify-end gap-1.5 mb-1">
+            <Zap size={10} className="text-[#8B7355]" />
+            <span className="text-[9px] font-mono uppercase tracking-widest text-[#8B7355]">
+              Powered by Llama 4 Scout Vision
+            </span>
+          </div>
           <button
             onClick={handleAnalyze}
             disabled={!image || loading}
-            className="w-full mt-6 bg-[#B8F000] text-[#1A2E1A] py-4 font-bold uppercase tracking-[0.2em] hover:bg-[#a3d600] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(26,46,26,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+            className="w-full bg-[#B8F000] text-[#1A2E1A] py-4 font-bold uppercase tracking-[0.2em] hover:bg-[#a3d600] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(26,46,26,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
           >
             {loading ? "Analyzing..." : "Run AI Verification"}
           </button>
@@ -159,7 +166,11 @@ const VerifyView: React.FC = () => {
           <div className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
             {/* Score Card */}
             <div className="bg-white p-8 border border-[#d1cdc3] relative overflow-hidden shadow-sm mb-6">
-              <div className="absolute top-0 right-0 p-4">
+              <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1 text-[9px] font-mono text-[#8B7355] bg-[#f5f2eb] px-2 py-0.5 rounded-sm border border-[#e0dbd0]">
+                  <Zap size={8} />
+                  Llama 4 Scout
+                </div>
                 <div className={clsx(
                   "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm",
                   result.confidence === 'high' ? "bg-[#B8F000]/20 text-[#1A2E1A]" : "bg-[#F5A623]/20 text-[#d97706]"

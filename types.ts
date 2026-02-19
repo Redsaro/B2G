@@ -20,6 +20,7 @@ export interface Village {
   casesPrevented: number;
   girlsAttendance: number; // percentage
   odfStatus: boolean;
+  lastSubmissionDate: string; // ISO date string
 }
 
 export interface VerificationResult {

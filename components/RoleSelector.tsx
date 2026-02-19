@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Role } from '../types';
 import { User, Activity, Users, TrendingUp } from 'lucide-react';
 
@@ -32,7 +32,7 @@ const AIStatusBadge = () => {
     <span className={`flex items-center gap-1.5 font-bold ${status.connected ? 'text-[#B8F000]' : 'text-[#E8603C]'}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${status.connected ? 'bg-[#B8F000]' : 'bg-[#E8603C]'}`} />
       {status.connected
-        ? 'AI: Gemma + Gemini'
+        ? `AI: Llama 4 Scout · ${status.model.replace('meta-llama/', '').slice(0, 14)}`
         : `AI: ${status.error || 'Offline'}`}
     </span>
   );
@@ -52,7 +52,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelect }) => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#B8F000] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B8F000]"></span>
           </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold text-[#EEE9DF]/70">SanSure Network Active</span>
+          <span className="text-[10px] uppercase tracking-widest font-bold text-[#EEE9DF]/70">SanMap Network Active</span>
         </div>
         <div className="flex gap-6 text-[10px] uppercase tracking-widest text-[#EEE9DF]/40 items-center">
           <span className="hidden md:inline">3 Active Clusters</span>
@@ -63,11 +63,11 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelect }) => {
 
       <div className="z-10 max-w-5xl w-full mt-12">
         <div className="mb-16">
-          <div className="inline-block bg-[#B8F000] text-[#1A2E1A] text-[10px] font-bold tracking-[0.25em] uppercase px-3 py-1.5 mb-8 font-['Syne'] shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]">
-            MVP General Plan — v3.0
-          </div>
+          <span className="text-[#B8F000]/40 text-[10px] font-mono italic tracking-widest mb-8 block">
+            v3.0 · mvp build · sdg 6.2
+          </span>
           <h1 className="text-6xl md:text-8xl font-extrabold leading-[0.95] tracking-tight mb-6 font-['Syne']">
-            San<span className="text-[#B8F000]">Sure</span>
+            San<span className="text-[#B8F000]">Map</span>
           </h1>
           <p className="font-serif italic text-xl md:text-2xl text-[#EEE9DF]/55 max-w-xl leading-relaxed border-l-2 border-[#B8F000] pl-6">
             The Rural Sanitation Trust Protocol — converting verified functionality into tradeable Impact Credits.

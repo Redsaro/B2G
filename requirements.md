@@ -1,12 +1,12 @@
-# Requirements Document: SanSure Platform
+﻿# Requirements Document: SanMap Platform
 
 ## Introduction
 
-SanSure is a continuous rural sanitation intelligence platform that creates a self-sustaining infrastructure maintenance ecosystem through dual-signal architecture. The platform provides manipulation-resistant, market-priced functionality signals to capital markets while delivering health consequence feedback to rural households. By treating verification as a market design problem, SanSure enables financial signals to flow upstream to capital providers and health impact signals to flow downstream to households, making sanitation infrastructure maintenance economically viable and socially meaningful.
+SanMap is a continuous rural sanitation intelligence platform that creates a self-sustaining infrastructure maintenance ecosystem through dual-signal architecture. The platform provides manipulation-resistant, market-priced functionality signals to capital markets while delivering health consequence feedback to rural households. By treating verification as a market design problem, SanMap enables financial signals to flow upstream to capital providers and health impact signals to flow downstream to households, making sanitation infrastructure maintenance economically viable and socially meaningful.
 
 ## Glossary
 
-- **System**: The SanSure Platform
+- **System**: The SanMap Platform
 - **Hygiene_Score**: A 0-100 numerical assessment of toilet facility condition across four dimensions
 - **Verification_Participant**: A CHW, peer, or ward auditor who submits facility assessments
 - **Impact_Credit**: A fractional token representing verified person-days of functional sanitation
@@ -33,7 +33,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 2. WHEN the AI analysis completes, THE System SHALL return a Hygiene_Score between 0 and 100 with a confidence level assessment
 3. WHEN the AI analysis completes, THE System SHALL provide per-dimension visual verification results for each of the four assessment dimensions
 4. IF the primary Groq model fails, THEN THE System SHALL fall back to a secondary Groq model or rule-based scoring
-5. IF both AI services are unavailable, THEN THE System SHALL fall back to rule-based browser scoring using scorer.js
+5. IF both AI services are unavailable, THEN THE System SHALL fall back to rule-based browser scoring using geminiService.ts fallback logic
 6. WHEN analyzing a photo, THE System SHALL detect spoofing risk by identifying recycled or staged images
 7. WHEN spoofing risk is detected, THE System SHALL flag the submission with a spoofing risk assessment level
 8. WHEN the verification participant submits a 4-item binary checklist (door, water, toilet clean, toilet visible), THE System SHALL incorporate checklist data into the final Hygiene_Score calculation
@@ -62,7 +62,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 #### Acceptance Criteria
 
-1. WHEN a Hygiene_Score is generated, THE System SHALL record it in the Glass_Vault append-only SQLite database
+1. WHEN a Hygiene_Score is generated, THE System SHALL record it in the Glass_Vault append-only database (SQLite/LocalStorage adapter)
 2. WHEN a collusion adjudication completes, THE System SHALL record the result in the Glass_Vault
 3. WHEN an Impact_Credit is minted, THE System SHALL record the minting event in the Glass_Vault
 4. THE System SHALL enforce immutability of Glass_Vault records through schema design constraints
@@ -121,7 +121,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 7. WHEN AI scoring detects discrepancies, THE System SHALL display discrepancy flags with explanations in a highlighted alert section
 8. WHEN AI scoring detects spoofing risk, THE System SHALL display the spoofing risk assessment in a warning banner
 9. THE System SHALL organize the results screen with: score at top, dimension cards in middle, alerts/warnings at bottom
-10. THE System SHALL provide the submission interface as an Android application
+10. THE System SHALL provide the submission interface as a Responsive Web Application (PWA)
 11. WHEN network connectivity is poor, THE System SHALL queue submissions for upload when connectivity improves
 12. WHEN a submission is successfully recorded, THE System SHALL provide confirmation feedback with a success screen showing submission timestamp and reference number
 
@@ -131,18 +131,26 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 #### Acceptance Criteria
 
-1. WHEN a program manager opens the Village Trust Dashboard, THE System SHALL display a Leaflet.js map occupying the left two-thirds of the screen with village clusters
-2. WHEN displaying village clusters, THE System SHALL color-code them by Trust_Rating using a green (high) to red (low) gradient scale
-3. THE System SHALL display a legend in the top-right corner of the map showing the Trust_Rating color scale
-4. WHEN a program manager selects a village cluster, THE System SHALL display a detail panel in the right one-third of the screen
-5. WHEN the detail panel is displayed, THE System SHALL show a 90-day Hygiene_Score trend chart using Recharts at the top of the panel
-6. WHEN the detail panel is displayed, THE System SHALL show the current Volatility_Index as a metric card below the trend chart
-7. WHEN a village has official ODF_Status but AI scores are consistently below 60, THE System SHALL display an ODF Discrepancy Alert banner in red at the top of the detail panel
-8. WHEN the detail panel is displayed, THE System SHALL show a live collusion adjudication panel with recent adjudication results as a scrollable list at the bottom
-9. THE System SHALL organize the detail panel with: alerts at top, trend chart in middle, metrics cards below chart, adjudication list at bottom
-10. THE System SHALL update the dashboard in real-time as new verification data arrives
-11. WHEN a program manager hovers over a village cluster, THE System SHALL display summary statistics in a tooltip showing village name, current score, and Trust_Rating
-12. THE System SHALL provide the dashboard as a web application accessible via browser with responsive layout for tablet and desktop screens
+1. WHEN a program manager opens the Village Trust Dashboard, THE System SHALL display an interactive map occupying the left two-thirds of the screen showing all village markers
+2. WHEN displaying village markers, THE System SHALL color-code them by Trust_Rating using a green (AAA/AA) → amber (A/BBB) → red (BB and below) gradient scale
+3. THE System SHALL display a legend on the map showing the full Trust_Rating color scale with score bands
+4. WHEN a program manager clicks a village marker, THE System SHALL fly/animate the map to center on that village and display its detail panel in the right one-third of the screen
+5. WHEN a program manager hovers over a village marker, THE System SHALL display a rich tooltip showing: village name, current Hygiene_Score, Trust_Rating, Volatility_Index, and date of last submission
+6. THE System SHALL render village markers as proportionally-sized circles where marker radius scales with village population, giving larger villages more visual weight
+7. WHEN a village received a verification submission within the last 24 hours, THE System SHALL animate its marker with a pulsing ring to indicate live activity
+8. THE System SHALL support smooth pan and zoom (mouse scroll / pinch) with no full-page reload
+9. WHEN the map is zoomed out below district level, THE System SHALL cluster nearby villages into aggregate cluster markers showing average Trust_Rating for the cluster
+10. WHEN the map is zoomed into village level, THE System SHALL expand clusters and show individual facility-level markers within the village boundary
+11. THE System SHALL provide a filter bar above the map allowing program managers to filter visible villages by: Trust_Rating range, ODF_Status, Volatility_Index threshold, and district
+12. WHEN filters are applied, THE System SHALL animate marker visibility changes rather than abruptly removing markers
+13. WHEN a program manager activates "Compare Mode", THE System SHALL allow multi-selection of up to 3 villages and render a side-by-side comparison panel showing their 90-day trend charts and key metrics
+14. THE System SHALL provide a minimap overview in the bottom-right corner of the map showing the full geographic extent with a viewport rectangle
+15. THE System SHALL display a heatmap overlay toggle that renders a smooth color gradient across the map surface based on interpolated Hygiene_Score density, independent of village marker positions
+16. WHEN the detail panel is displayed, THE System SHALL show a 90-day Hygiene_Score trend chart at the top of the panel with interactive tooltips on data points
+17. WHEN the detail panel is displayed, THE System SHALL show the current Volatility_Index as a metric card below the trend chart
+18. WHEN a village has official ODF_Status but AI scores are consistently below 60, THE System SHALL display an ODF Discrepancy Alert banner in the detail panel
+19. WHEN the detail panel is displayed, THE System SHALL show recent collusion adjudication results as a scrollable list at the bottom
+20. THE System SHALL update marker colors and cluster aggregates in real-time as new verification data arrives, without requiring a page refresh
 
 ### Requirement 8: Health Mirror Community Display
 
@@ -200,7 +208,7 @@ SanSure is a continuous rural sanitation intelligence platform that creates a se
 
 ### Requirement 11: REST API for Capital Integration
 
-**User Story:** As a capital consumer, I want a REST API to integrate SanSure data into my investment systems, so that I can automate funding decisions.
+**User Story:** As a capital consumer, I want a REST API to integrate SanMap data into my investment systems, so that I can automate funding decisions.
 
 #### Acceptance Criteria
 

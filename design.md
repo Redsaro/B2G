@@ -1,8 +1,8 @@
-# Design Document: SanSure Platform
+﻿# Design Document: SanMap Platform
 
 ## Overview
 
-SanSure is a continuous rural sanitation intelligence platform built on a dual-signal architecture that creates self-sustaining infrastructure maintenance ecosystems. The platform provides manipulation-resistant functionality signals to capital markets while delivering health consequence feedback to rural households.
+SanMap is a continuous rural sanitation intelligence platform built on a dual-signal architecture that creates self-sustaining infrastructure maintenance ecosystems. The platform provides manipulation-resistant functionality signals to capital markets while delivering health consequence feedback to rural households.
 
 ### Core Architecture Principles
 
@@ -255,7 +255,7 @@ function calculateCasesPrevented(villageId, currentPeriod, previousPeriod) {
 
 **Prompt Template**:
 ```
-You are SanSure's hygiene scoring engine. Analyze this toilet facility photo across four dimensions:
+You are SanMap's hygiene scoring engine. Analyze this toilet facility photo across four dimensions:
 
 1. STRUCTURAL INTEGRITY (door present, walls intact, roof functional)
 2. WATER AVAILABILITY (water source visible, container present)
@@ -344,7 +344,7 @@ interface HygieneScoreResult {
 
 **Prompt Template**:
 ```
-You are SanSure's collusion detection engine. Three independent parties submitted assessments for facility {facility_id}:
+You are SanMap's collusion detection engine. Three independent parties submitted assessments for facility {facility_id}:
 
 HOUSEHOLD SUBMISSION:
 Score: {submissions[0].score}
@@ -452,7 +452,7 @@ Your village kept toilets clean for 90 days. Illness cases this quarter: 12. Sam
 
 **Prompt Template**:
 ```
-You are SanSure's investment signal generator. Analyze this 90-day hygiene score history for {village_name}:
+You are SanMap's investment signal generator. Analyze this 90-day hygiene score history for {village_name}:
 
 Scores: {scores_90days}
 Average: {avg_score}
@@ -1068,7 +1068,7 @@ app.use('/api/investor', authenticateAPIKey);
 
 ```javascript
 // backend/db/database.js
-const db = require('better-sqlite3')('sansure.db');
+const db = require('better-sqlite3')('SanMap.db');
 
 // Prepared statement example
 const insertSubmission = db.prepare(`
@@ -1249,7 +1249,7 @@ PORT=3001
 NODE_ENV=development
 
 # Database
-DATABASE_PATH=./sansure.db
+DATABASE_PATH=./SanMap.db
 
 # AI Services
 GEMINI_API_KEY=your_gemini_api_key
@@ -1423,7 +1423,7 @@ npm run dev   # Start Next.js on port 3000
 
 ## Conclusion
 
-This design document provides a comprehensive technical blueprint for the SanSure MVP. The architecture prioritizes:
+This design document provides a comprehensive technical blueprint for the SanMap MVP. The architecture prioritizes:
 
 1. **Reliability**: Three-tier AI fallback ensures continuous operation
 2. **Integrity**: Append-only Glass Vault prevents data manipulation

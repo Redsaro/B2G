@@ -15,7 +15,7 @@ const HealthMirrorView: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center max-w-2xl mx-auto">
-      
+
       <div className="mb-12">
         <h2 className="text-4xl md:text-5xl font-['Syne'] font-bold text-[#1A2E1A] mb-2">{village.name} Village</h2>
         <div className="text-[#F5A623] font-serif italic text-xl">Health Mirror Report</div>
@@ -25,7 +25,10 @@ const HealthMirrorView: React.FC = () => {
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#F5A623] text-[#1A2E1A] px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
           Community Update
         </div>
-        
+        <div className="absolute -top-6 right-4 flex items-center gap-1 bg-[#1A2E1A] text-[#B8F000] px-2 py-1 text-[9px] font-mono">
+          ⚡ Llama 4 Scout
+        </div>
+
         <p className="font-serif text-xl md:text-2xl leading-relaxed text-[#1A2E1A] mb-8">
           "{narrative}"
         </p>
@@ -37,14 +40,14 @@ const HealthMirrorView: React.FC = () => {
             <div className="text-[10px] uppercase tracking-widest text-[#8B7355] mt-1">Illnesses Prevented</div>
           </div>
           <div className="flex flex-col items-center border-l border-[#d1cdc3]">
-             <Users className="text-[#3D9970] mb-2" size={24} />
-             <div className="text-3xl font-['Syne'] font-bold text-[#1A2E1A]">{village.girlsAttendance}%</div>
-             <div className="text-[10px] uppercase tracking-widest text-[#8B7355] mt-1">Girls in School</div>
+            <Users className="text-[#3D9970] mb-2" size={24} />
+            <div className="text-3xl font-['Syne'] font-bold text-[#1A2E1A]">{village.girlsAttendance}%</div>
+            <div className="text-[10px] uppercase tracking-widest text-[#8B7355] mt-1">Girls in School</div>
           </div>
           <div className="flex flex-col items-center border-l border-[#d1cdc3]">
-             <Calendar className="text-[#F5A623] mb-2" size={24} />
-             <div className="text-3xl font-['Syne'] font-bold text-[#1A2E1A]">90</div>
-             <div className="text-[10px] uppercase tracking-widest text-[#8B7355] mt-1">Days Protected</div>
+            <Calendar className="text-[#F5A623] mb-2" size={24} />
+            <div className="text-3xl font-['Syne'] font-bold text-[#1A2E1A]">90</div>
+            <div className="text-[10px] uppercase tracking-widest text-[#8B7355] mt-1">Days Protected</div>
           </div>
         </div>
       </div>

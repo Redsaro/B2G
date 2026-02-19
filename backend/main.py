@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import (
@@ -10,7 +10,7 @@ import groq_service
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("main")
 
-app = FastAPI(title="SanSure AI Backend", version="1.0.0")
+app = FastAPI(title="SanMap AI Backend", version="1.0.0")
 
 # Allow Vite dev server to reach the backend
 app.add_middleware(

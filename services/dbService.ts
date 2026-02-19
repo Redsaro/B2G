@@ -1,10 +1,10 @@
-import { Submission, VerificationResult, CollusionResult, Checklist, Village } from '../types';
+﻿import { Submission, VerificationResult, CollusionResult, Checklist, Village } from '../types';
 
 // Mock Glass Vault (LocalStorage Adapter)
 const STORAGE_KEYS = {
-    SUBMISSIONS: 'sansure_glass_vault_submissions',
-    CYCLES: 'sansure_glass_vault_cycles',
-    VILLAGES: 'sansure_villages' // For demo data
+    SUBMISSIONS: 'SanMap_glass_vault_submissions',
+    CYCLES: 'SanMap_glass_vault_cycles',
+    VILLAGES: 'SanMap_villages' // For demo data
 };
 
 export interface StoredSubmission extends VerificationResult {
@@ -34,7 +34,8 @@ export const dbService = {
                 volatilityIndex: 6.8,
                 casesPrevented: 29,
                 girlsAttendance: 12,
-                odfStatus: true
+                odfStatus: true,
+                lastSubmissionDate: new Date().toISOString()
             };
             localStorage.setItem(STORAGE_KEYS.VILLAGES, JSON.stringify([demoVillage]));
         }

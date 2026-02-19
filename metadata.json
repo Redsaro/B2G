@@ -1,5 +1,5 @@
-{
-  "name": "SanSure",
+﻿{
+  "name": "SanMap",
   "description": "Rural sanitation trust-rating platform using Gemini Vision & Data Intelligence.",
   "requestFramePermissions": [
     "camera",

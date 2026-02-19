@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import re
 import logging
@@ -16,8 +16,8 @@ logger = logging.getLogger("groq_service")
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"  # VLM ✓ — official replacement for llama-3.2-90b-vision-preview
 TEXT_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-SANSURE_SYSTEM_INSTRUCTION = """
-You are SanSure's core AI engine — an intelligence layer powering a rural sanitation
+SanMap_SYSTEM_INSTRUCTION = """
+You are SanMap's core AI engine — an intelligence layer powering a rural sanitation
 trust-rating platform aligned with SDG 6.2. You operate across four distinct modes
 depending on the task passed to you. Always detect which mode applies from the request
 structure and respond accordingly.
@@ -80,7 +80,7 @@ def safe_json_parse(text: str | None) -> dict | None:
 # ── MODE 1: Vision Hygiene Scorer ──────────────────────────────
 def run_vision_analysis(req: VisionRequest) -> dict:
     cl = req.checklist
-    prompt = f"""You are SanSure's hygiene scoring engine. Analyze this toilet facility photo across four dimensions:
+    prompt = f"""You are SanMap's hygiene scoring engine. Analyze this toilet facility photo across four dimensions:
 
 1. STRUCTURAL INTEGRITY (door present, walls intact, roof functional)
 2. WATER AVAILABILITY (water source visible, container present)
@@ -116,7 +116,7 @@ Return ONLY valid JSON (no markdown fences):
         model=VISION_MODEL,
         temperature=0.1,
         messages=[
-            {"role": "system", "content": SANSURE_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": SanMap_SYSTEM_INSTRUCTION},
             {
                 "role": "user",
                 "content": [
@@ -149,7 +149,7 @@ def run_collusion_check(req: CollusionRequest) -> dict:
             f"Features: {s.features}"
         )
 
-    prompt = f"""You are SanSure's collusion detection engine. Three independent parties submitted assessments for facility {facility_id}:
+    prompt = f"""You are SanMap's collusion detection engine. Three independent parties submitted assessments for facility {facility_id}:
 
 HOUSEHOLD SUBMISSION:
 {fmt(subs[0]) if len(subs) > 0 else 'N/A'}
@@ -180,7 +180,7 @@ Return ONLY valid JSON (no markdown fences):
         model=TEXT_MODEL,
         temperature=0.1,
         messages=[
-            {"role": "system", "content": SANSURE_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": SanMap_SYSTEM_INSTRUCTION},
             {"role": "user", "content": prompt},
         ],
     )
@@ -208,7 +208,7 @@ Focus on: protection of children, health of families, pride in community achieve
         model=TEXT_MODEL,
         temperature=0.7,
         messages=[
-            {"role": "system", "content": SANSURE_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": SanMap_SYSTEM_INSTRUCTION},
             {"role": "user", "content": prompt},
         ],
     )
@@ -218,7 +218,7 @@ Focus on: protection of children, health of families, pride in community achieve
 
 # ── MODE 4: Investor Signal Generator ──────────────────────────
 def generate_investor_signal(req: InvestorSignalRequest) -> dict:
-    prompt = f"""You are SanSure's investment signal generator. Analyze this 90-day hygiene score history for {req.village_name}:
+    prompt = f"""You are SanMap's investment signal generator. Analyze this 90-day hygiene score history for {req.village_name}:
 
 Scores: {req.history}
 Average: {req.avg}
@@ -243,7 +243,7 @@ Return ONLY valid JSON (no markdown fences):
         model=TEXT_MODEL,
         temperature=0.1,
         messages=[
-            {"role": "system", "content": SANSURE_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": SanMap_SYSTEM_INSTRUCTION},
             {"role": "user", "content": prompt},
         ],
     )
